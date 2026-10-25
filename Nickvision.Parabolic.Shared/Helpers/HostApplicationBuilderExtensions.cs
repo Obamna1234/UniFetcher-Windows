@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Nickvision.Desktop.Application;
 using Nickvision.Desktop.Filesystem;
@@ -7,6 +7,7 @@ using Nickvision.Parabolic.Shared.Controllers;
 using Nickvision.Parabolic.Shared.Services;
 using System;
 using System.IO;
+using System.Reflection;
 
 namespace Nickvision.Parabolic.Shared.Helpers;
 
@@ -14,25 +15,17 @@ public static class HostApplicationBuilderExtensions
 {
     extension(IHostApplicationBuilder builder)
     {
-        public IHostApplicationBuilder ConfigureParabolic(string[] args)
+        public IHostApplicationBuilder ConfigureUniFetcher(string[] args)
         {
-            var appInfo = new AppInfo("org.nickvision.tubeconverter", "Nickvision Parabolic", "Parabolic")
+            var appInfo = new AppInfo("com.unifetcher.windows", "UniFetcher", "UniFetcher")
             {
-                Version = new AppVersion("2026.5.0"),
+                // The version comes from the build (the release workflow sets it from the git tag, e.g. v1.2.0 -> 1.2.0)
+                Version = new AppVersion(GetBuildVersion()),
                 Changelog = """
-                - Improved time frame downloads to cut with ffmpeg instead of using yt-dlp's broken --download-sections option
-                - Fixed an issue where some playlists throw a requested format not available error
-                - Fixed an issue where the macOS configuration directory was incorrect
-                - Fixed an issue where None post processor argument would not be saved
-                - Fixed an issue where format strings were not translated correctly
-                - Fixed an issue where the application would not start on KDE
-                - Fixed an issue where the application would not start if the database file was invalid
-                - Fixed an issue where dependencies were missing from the macOS bundle
-                - Updated bundled deno
+                - First UniFetcher release, based on Parabolic by Nickvision
                 """,
-                SourceRepository = new Uri("https://github.com/NickvisionApps/Parabolic"),
-                IssueTracker = new Uri("https://github.com/NickvisionApps/Parabolic/issues/new"),
-                DiscussionsForum = new Uri("https://github.com/NickvisionApps/Parabolic/discussions"),
+                SourceRepository = new Uri("https://github.com/Obamna1234/UniFetcher-Windows"),
+                IssueTracker = new Uri("https://github.com/Obamna1234/UniFetcher-Windows/issues/new"),
                 IsPortable = OperatingSystem.IsWindows() && args.Contains("--portable")
             };
             builder.Properties.Add("AppInfo", appInfo);
@@ -54,5 +47,13 @@ public static class HostApplicationBuilderExtensions
             builder.Services.AddHostedService<ConfigurationMigrationService>();
             return builder;
         }
+    }
+
+    private static string GetBuildVersion()
+    {
+        var info = typeof(HostApplicationBuilderExtensions).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.1.0";
+        // Strip any "+commit" suffix the .NET SDK adds
+        var plus = info.IndexOf('+');
+        return plus == -1 ? info : info[..plus];
     }
 }

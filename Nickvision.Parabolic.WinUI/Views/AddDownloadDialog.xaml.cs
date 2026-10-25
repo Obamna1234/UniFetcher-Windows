@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.WinUI;
+using CommunityToolkit.WinUI;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -80,7 +80,7 @@ public sealed partial class AddDownloadDialog : ContentDialog
         TglDownloadImmediatelyAsAudio.OnContent = _translationService._("Download Immediately as Audio");
         TglDownloadImmediatelyAsAudio.OffContent = _translationService._("Download Immediately as Audio");
         TeachDownloadImmediately.Title = _translationService._("Warning");
-        TeachDownloadImmediately.Subtitle = _translationService._("Parabolic will download media based off of previously configured options and sensible defaults. Options including save folder, format, and subtitle selection will not be shown.");
+        TeachDownloadImmediately.Subtitle = _translationService._("UniFetcher will download media based off of previously configured options and sensible defaults. Options including save folder, format, and subtitle selection will not be shown.");
         LblLoading.Text = _translationService._("This may take some time...");
         NavViewItemSingleGeneral.Text = _translationService._("General");
         NavViewItemSingleSubtitles.Text = _translationService._("Subtitles");

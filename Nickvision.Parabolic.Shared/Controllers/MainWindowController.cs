@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Nickvision.Desktop.Application;
 using Nickvision.Desktop.Filesystem;
 using Nickvision.Desktop.Globalization;
@@ -58,15 +58,17 @@ public class MainWindowController
         // Events
         _configurationService.Saved += ConfigurationService_Saved;
         // Translate strings
-        _appInfo.ShortName = translationService._("Parabolic");
+        _appInfo.ShortName = translationService._("UniFetcher");
         _appInfo.Description = translationService._("Download web video and audio.");
-        _appInfo.ExtraLinks.Add(translationService._("Matrix Chat"), new Uri("https://matrix.to/#/#nickvision:matrix.org"));
-        _appInfo.Developers.Add("Nicholas Logozzo", "https://github.com/nlogozzo");
-        _appInfo.Developers.Add(translationService._("Contributors on GitHub ❤️"), "https://github.com/NickvisionApps/Parabolic/graphs/contributors");
-        _appInfo.Designers.Add("Nicholas Logozzo", "https://github.com/nlogozzo");
+        // UniFetcher is a fork of Parabolic: keep credit for the original authors
+        _appInfo.ExtraLinks.Add(translationService._("Based on Parabolic by Nickvision"), new Uri("https://github.com/NickvisionApps/Parabolic"));
+        _appInfo.Developers.Add("Nicholas Logozzo (Parabolic)", "https://github.com/nlogozzo");
+        _appInfo.Developers.Add(translationService._("Parabolic contributors on GitHub"), "https://github.com/NickvisionApps/Parabolic/graphs/contributors");
+        _appInfo.Developers.Add("Obamna1234 (UniFetcher)", "https://github.com/Obamna1234");
+        _appInfo.Designers.Add("Nicholas Logozzo (Parabolic)", "https://github.com/nlogozzo");
         _appInfo.Designers.Add(translationService._("Fyodor Sobolev"), "https://github.com/fsobolev");
         _appInfo.Designers.Add("DaPigGuy", "https://github.com/DaPigGuy");
-        _appInfo.Artists.Add(translationService._("David Lapshin"), "https://github.com/daudix");
+        _appInfo.Artists.Add(translationService._("David Lapshin (Parabolic)"), "https://github.com/daudix");
         _appInfo.TranslationCredits = translationService._("translation-credits");
     }
 
@@ -107,9 +109,9 @@ public class MainWindowController
             for (var i = 0; i < _argumentsService.Data.Count; i++)
             {
                 var urlText = _argumentsService.Data[i].Trim();
-                if (urlText.StartsWith("parabolic://", StringComparison.Ordinal))
+                if (urlText.StartsWith("unifetcher://", StringComparison.Ordinal))
                 {
-                    urlText = urlText.Replace("parabolic://", "https://");
+                    urlText = urlText.Replace("unifetcher://", "https://");
                 }
                 if (Uri.TryCreate(urlText, UriKind.Absolute, out var url))
                 {
@@ -125,7 +127,6 @@ public class MainWindowController
         _logger.LogInformation("Checking for updates...");
         var stableAppVersion = await _updaterService.GetLatestStableVersionAsync();
         var stableYtdlpVersion = await _ytdlpExecutableService.GetLatestStableVersionAsync();
-        var stableDenoVersion = await _denoExecutableService.GetLatestStableVersionAsync();
         if (stableAppVersion is not null)
         {
             _latestAppVersion = stableAppVersion;
@@ -133,10 +134,6 @@ public class MainWindowController
         if (stableYtdlpVersion is not null)
         {
             _latestYtdlpVersion = stableYtdlpVersion;
-        }
-        if (stableDenoVersion is not null)
-        {
-            _latestDenoVersion = stableDenoVersion;
         }
         if (_configurationService.AllowPreviewUpdates)
         {
@@ -168,14 +165,6 @@ public class MainWindowController
             _notificationService.Send(new AppNotification(_translationService._("New yt-dlp update available: {0}", _latestYtdlpVersion.ToString()), NotificationSeverity.Success)
             {
                 Action = "update-ytdlp"
-            });
-        }
-        else if (_latestDenoVersion > _denoExecutableService.BundledVersion && _latestDenoVersion > _denoExecutableService.InstalledVersion)
-        {
-            _logger.LogInformation($"New deno update available: {_latestDenoVersion}");
-            _notificationService.Send(new AppNotification(_translationService._("New deno update available: {0}", _latestDenoVersion.ToString()), NotificationSeverity.Success)
-            {
-                Action = "update-deno"
             });
         }
         else

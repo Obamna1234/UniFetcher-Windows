@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
@@ -9,6 +9,10 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<OutputType>WinExe</OutputType>
 		<RootNamespace>Nickvision.Parabolic.WinUI</RootNamespace>
+		<AssemblyName>UniFetcher</AssemblyName>
+		<Product>UniFetcher</Product>
+		<AssemblyTitle>UniFetcher</AssemblyTitle>
+		<Company>UniFetcher</Company>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 		<Platforms>x86;x64;ARM64</Platforms>
 		<RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
@@ -20,7 +24,7 @@
 		<WindowsAppSdkSelfContained>true</WindowsAppSdkSelfContained>
 		<DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
 		<StartupObject>Nickvision.Parabolic.WinUI.Program</StartupObject>
-		<Version>2026.5.0</Version>
+		<Version>0.1.0</Version>
 		<PublishAot>true</PublishAot>
 	</PropertyGroup>
 
@@ -64,7 +68,7 @@
 		<PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
 	</PropertyGroup>
 	<PropertyGroup>
-		<ApplicationIcon>Assets\org.nickvision.tubeconverter.ico</ApplicationIcon>
+		<ApplicationIcon>Assets\unifetcher.ico</ApplicationIcon>
 	</PropertyGroup>
 
 	<Import Project="..\Nickvision.Common.targets" />

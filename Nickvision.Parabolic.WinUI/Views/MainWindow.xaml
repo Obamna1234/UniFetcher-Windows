@@ -29,7 +29,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <ImageIcon Grid.Column="0" VerticalAlignment="Center" Height="18" Source="/Assets/org.nickvision.tubeconverter.ico"/>
+                    <ImageIcon Grid.Column="0" VerticalAlignment="Center" Height="18" Source="/Assets/unifetcher.ico"/>
 
                     <TextBlock x:Name="LblTitle" Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}"/>
 
@@ -155,12 +155,6 @@
                                 </MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
 
-                            <MenuFlyoutItem x:Name="MenuDiscussions" Click="Discussions">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE8F2;"/>
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-
                             <MenuFlyoutSeparator/>
 
                             <MenuFlyoutItem x:Name="MenuAbout" Click="About">
@@ -212,7 +206,7 @@
             <nickvision:ViewStack x:Name="ViewStack" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                 <nickvision:ViewStack.Pages>
                     <StackPanel Margin="48,48,48,48" HorizontalAlignment="Stretch" Orientation="Vertical" Spacing="12">
-                        <Image HorizontalAlignment="Left" Width="64" Height="64" Source="/Assets/org.nickvision.tubeconverter.ico"/>
+                        <Image HorizontalAlignment="Left" Width="64" Height="64" Source="/Assets/unifetcher.ico"/>
 
                         <TextBlock x:Name="LblHomeTitle" HorizontalAlignment="Left" Style="{ThemeResource TitleTextBlockStyle}"/>
 

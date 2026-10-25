@@ -1,4 +1,4 @@
-﻿using ATL;
+using ATL;
 using Nickvision.Desktop.Application;
 using Nickvision.Desktop.Globalization;
 using Nickvision.Desktop.Helpers;
@@ -247,7 +247,7 @@ public partial class Download : IDisposable
         _logBuilder.AppendLine(e.Data);
         try
         {
-            if (e.Data.StartsWith("[Parabolic] Progress", StringComparison.Ordinal))
+            if (e.Data.StartsWith("[UniFetcher] Progress", StringComparison.Ordinal))
             {
                 var fields = e.Data.Split(';');
                 if (fields.Length != 7 || fields[1] == "NA")

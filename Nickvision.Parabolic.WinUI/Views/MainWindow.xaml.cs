@@ -60,7 +60,7 @@ public sealed partial class MainWindow : Window
         };
         this.Geometry = _controller.WindowGeometry;
         // TitleBar
-        AppWindow.SetIcon(_appInfo.Version!.IsPreview ? "./Assets/org.nickvision.tubeconverter-devel.ico" : "./Assets/org.nickvision.tubeconverter.ico");
+        AppWindow.SetIcon(_appInfo.Version!.IsPreview ? "./Assets/unifetcher-devel.ico" : "./Assets/unifetcher.ico");
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBar);
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
@@ -96,7 +96,6 @@ public sealed partial class MainWindow : Window
         MenuCheckForUpdates.Text = _translationService._("Check for Updates");
         MenuGitHubRepo.Text = _translationService._("GitHub Repo");
         MenuReportABug.Text = _translationService._("Report a Bug");
-        MenuDiscussions.Text = _translationService._("Discussions");
         MenuAbout.Text = _translationService._("About {0}", _appInfo.ShortName!);
         ToolTipService.SetToolTip(BtnPreview, _translationService._("You are running a preview version of {0}", _appInfo.ShortName!));
         LblPreview.Text = _translationService._("Thank you for testing the upcoming features and changes! ❤️");
@@ -148,7 +147,7 @@ public sealed partial class MainWindow : Window
                     {
                         new TextBlock()
                         {
-                            Text = _translationService._("Videos on YouTube and other sites may be subject to DMCA protection. The authors of Parabolic do not endorse, and are not responsible for, the use of this application in means that will violate these laws."),
+                            Text = _translationService._("Videos on YouTube and other sites may be subject to DMCA protection. The authors of UniFetcher do not endorse, and are not responsible for, the use of this application in means that will violate these laws."),
                             TextWrapping = TextWrapping.WrapWholeWords
                         },
                         checkBox
@@ -170,7 +169,7 @@ public sealed partial class MainWindow : Window
             var recoverDialog = new ContentDialog()
             {
                 Title = _translationService._("Recover Downloads?"),
-                Content = _translationService._("There are downloads available to recover from when Parabolic crashed. Would you like to download them again?"),
+                Content = _translationService._("There are downloads available to recover from when UniFetcher crashed. Would you like to download them again?"),
                 PrimaryButtonText = _translationService._("Yes"),
                 CloseButtonText = _translationService._("No"),
                 DefaultButton = ContentDialogButton.Primary,
@@ -493,8 +492,6 @@ public sealed partial class MainWindow : Window
         await _controller.DenoUpdateAsync(progress);
         progress.ProgressChanged -= UpdateProgress_Changed;
     }
-
-    private async void Discussions(object? sender, RoutedEventArgs e) => await LaunchUriAsync(_appInfo.DiscussionsForum);
 
     private async void GitHubRepo(object? sender, RoutedEventArgs e) => await LaunchUriAsync(_appInfo.SourceRepository);
 

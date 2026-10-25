@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting;
 using Nickvision.Desktop.WinUI.Helpers;
 using Nickvision.Parabolic.Shared.Helpers;
 using Nickvision.Parabolic.WinUI.Helpers;
@@ -17,7 +17,7 @@ public static partial class Program
     {
         XamlCheckProcessRequirements();
         var builder = Host.CreateApplicationBuilder(args);
-        builder.ConfigureParabolic(args);
+        builder.ConfigureUniFetcher(args);
         builder.ConfigureWinUI<App>();
         builder.Services.AddControls();
         var app = builder.Build();

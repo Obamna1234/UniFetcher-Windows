@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Nickvision.Desktop.Helpers;
 using Nickvision.Parabolic.Shared.Models;
 using System;
