@@ -43,6 +43,18 @@ public sealed partial class SettingsPage : Page
         RowPreviewUpdates.Description = _translationService._("Update UniFetcher and dependencies, such as yt-dlp, to beta versions");
         TglPreviewUpdates.OnContent = _translationService._("On");
         TglPreviewUpdates.OffContent = _translationService._("Off");
+        RowToolUpdates.Header = _translationService._("yt-dlp and ffmpeg");
+        RowToolUpdates.Description = _translationService._("Outdated yt-dlp is the main reason downloads fail, so UniFetcher keeps it current");
+        BtnCheckToolsNow.Content = _translationService._("Check now");
+        RowToolStatus.Header = _translationService._("Current versions");
+        LblToolStatus.Text = _translationService._("Loading...");
+        RowToolUpdateMode.Header = _translationService._("Updates");
+        CmbToolUpdateMode.ItemsSource = _controller.ToolUpdateModes.ToBindableSelectonItems();
+        RowYtdlpChannel.Header = _translationService._("yt-dlp channel");
+        CmbYtdlpChannel.ItemsSource = _controller.YtdlpChannels.ToBindableSelectonItems();
+        RowToolRollBack.Header = _translationService._("Roll back");
+        RowToolRollBack.Description = _translationService._("If an update broke something, go back to the previous yt-dlp and ffmpeg");
+        BtnToolRollBack.Content = _translationService._("Roll back to previous version");
         RowPreventSuspend.Header = _translationService._("Prevent Suspend");
         RowPreventSuspend.Description = _translationService._("Prevent the computer from sleeping while downloads are running");
         TglPreventSuspend.OnContent = _translationService._("On");
@@ -161,6 +173,10 @@ public sealed partial class SettingsPage : Page
         CmbTheme.SelectSelectionItem();
         CmbTranslationLanguage.SelectSelectionItem();
         TglPreviewUpdates.IsOn = _controller.AllowPreviewUpdates;
+        CmbToolUpdateMode.SelectSelectionItem();
+        CmbYtdlpChannel.SelectSelectionItem();
+        BtnToolRollBack.IsEnabled = _controller.CanRollBackTools;
+        _ = RefreshToolStatusAsync();
         TglPreventSuspend.IsOn = _controller.PreventSuspend;
         CmbHistoryLength.SelectSelectionItem();
         NumActiveDownloads.Value = _controller.MaxNumberOfActiveDownloads;
@@ -234,6 +250,30 @@ public sealed partial class SettingsPage : Page
                 }
             }
         } while (error is not null);
+    }
+
+    private async Task RefreshToolStatusAsync()
+    {
+        LblToolStatus.Text = await _controller.GetToolStatusAsync();
+        BtnToolRollBack.IsEnabled = _controller.CanRollBackTools;
+    }
+
+    private async void CheckToolsNow(object? sender, RoutedEventArgs e)
+    {
+        BtnCheckToolsNow.IsEnabled = false;
+        LblToolStatus.Text = _translationService._("Checking...");
+        var message = await _controller.CheckToolsNowAsync();
+        await RefreshToolStatusAsync();
+        LblToolStatus.Text = message + "\n" + LblToolStatus.Text;
+        BtnCheckToolsNow.IsEnabled = true;
+    }
+
+    private async void RollBackTools(object? sender, RoutedEventArgs e)
+    {
+        BtnToolRollBack.IsEnabled = false;
+        var message = await _controller.RollBackToolsAsync();
+        await RefreshToolStatusAsync();
+        LblToolStatus.Text = message + "\n" + LblToolStatus.Text;
     }
 
     private async void ClearCookiesFile(object? sender, RoutedEventArgs e)
@@ -337,6 +377,8 @@ public sealed partial class SettingsPage : Page
         _controller.Theme = (CmbTheme.SelectedItem as BindableSelectionItem)!.ToSelectionItem<Theme>()!;
         _controller.TranslationLanguage = (CmbTranslationLanguage.SelectedItem as BindableSelectionItem)!.ToSelectionItem<string>()!;
         _controller.AllowPreviewUpdates = TglPreviewUpdates.IsOn;
+        _controller.ToolUpdateMode = (CmbToolUpdateMode.SelectedItem as BindableSelectionItem)!.ToSelectionItem<ToolUpdateMode>()!;
+        _controller.YtdlpChannel = (CmbYtdlpChannel.SelectedItem as BindableSelectionItem)!.ToSelectionItem<YtdlpChannel>()!;
         _controller.PreventSuspend = TglPreventSuspend.IsOn;
         _controller.HistoryLength = (CmbHistoryLength.SelectedItem as BindableSelectionItem)!.ToSelectionItem<HistoryLength>()!;
         _controller.MaxNumberOfActiveDownloads = (int)NumActiveDownloads.Value;

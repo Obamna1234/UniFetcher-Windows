@@ -6,6 +6,7 @@ A plain-language guide. Sections marked *(coming soon)* describe features still 
 1. [Install UniFetcher](#install-unifetcher)
 2. [The "Windows protected your PC" warning](#the-windows-protected-your-pc-warning)
 3. [Update UniFetcher](#update-unifetcher)
+   - [yt-dlp and ffmpeg updates](#yt-dlp-and-ffmpeg-updates)
 4. [The UniFetcher Firefox profile](#the-unifetcher-firefox-profile) *(coming soon)*
 5. [Install the browser extension](#install-the-browser-extension)
 6. [Using a VPN (PIA)](#using-a-vpn-pia)
@@ -43,6 +44,21 @@ Never do this for a UniFetcher file you got from somewhere other than your own r
 - UniFetcher checks your Releases page on start. When there's a new version, a bar appears at the top of the window: click **Update**. It downloads the new installer and runs it.
 - Or: **Help → Check for Updates**.
 - Or: download the newest `Setup` file from Releases and run it. Installing over the old version **keeps your settings, history and queue** (they live in `%APPDATA%\UniFetcher`, not in the program folder).
+
+### yt-dlp and ffmpeg updates
+
+Websites change often, and an old yt-dlp is the most common reason a download fails. UniFetcher handles this on its own:
+
+- It checks for a new yt-dlp when it starts, every 12 hours while open, and before fetching a link if the last check was over 6 hours ago.
+- If a download fails because a site "isn't supported" or "can't be read", it updates yt-dlp (if there's a newer one) and tries that download once more.
+- ffmpeg is refreshed about once a week.
+- Everything comes only from the official yt-dlp pages on GitHub, and each file's checksum is verified before it's used.
+
+Settings → **User Interface** → **yt-dlp and ffmpeg**:
+- **Updates**: *Update automatically* (recommended), *Ask me first* (a bar with an **Update** button appears at the top of the window), or *Off*.
+- **yt-dlp channel**: *Nightly* (recommended, gets site fixes within a day), *Stable* (fewer, bigger releases), or *Master* (every single change; for testing).
+- **Check now**, plus the versions in use and when they were last checked.
+- **Roll back to previous version**: if downloads started failing right after an update, press this to go back. UniFetcher won't reinstall that same version; it waits for the next one.
 
 ## The UniFetcher Firefox profile
 

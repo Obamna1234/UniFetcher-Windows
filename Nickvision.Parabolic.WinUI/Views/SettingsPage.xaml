@@ -92,6 +92,47 @@
                                 <ToggleSwitch x:Name="TglPreviewUpdates" Toggled="Tgl_Toggled"/>
                             </community:SettingsCard>
 
+                            <!-- UniFetcher: yt-dlp and ffmpeg updates -->
+                            <community:SettingsExpander x:Name="RowToolUpdates" IsExpanded="True">
+                                <community:SettingsExpander.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE895;"/>
+                                </community:SettingsExpander.HeaderIcon>
+
+                                <Button x:Name="BtnCheckToolsNow" Click="CheckToolsNow"/>
+
+                                <community:SettingsExpander.Items>
+                                    <community:SettingsCard x:Name="RowToolStatus">
+                                        <community:SettingsCard.Description>
+                                            <TextBlock x:Name="LblToolStatus" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+                                        </community:SettingsCard.Description>
+                                    </community:SettingsCard>
+
+                                    <community:SettingsCard x:Name="RowToolUpdateMode">
+                                        <ComboBox x:Name="CmbToolUpdateMode" SelectionChanged="Cmb_SelectionChanged">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="helpers:BindableSelectionItem">
+                                                    <TextBlock Text="{x:Bind Label}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </community:SettingsCard>
+
+                                    <community:SettingsCard x:Name="RowYtdlpChannel">
+                                        <ComboBox x:Name="CmbYtdlpChannel" SelectionChanged="Cmb_SelectionChanged">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="helpers:BindableSelectionItem">
+                                                    <TextBlock Text="{x:Bind Label}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </community:SettingsCard>
+
+                                    <community:SettingsCard x:Name="RowToolRollBack">
+                                        <Button x:Name="BtnToolRollBack" Click="RollBackTools"/>
+                                    </community:SettingsCard>
+                                </community:SettingsExpander.Items>
+                            </community:SettingsExpander>
+
                             <community:SettingsCard x:Name="RowPreventSuspend">
                                 <community:SettingsCard.HeaderIcon>
                                     <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE7E8;"/>

@@ -15,6 +15,70 @@ public static class IConfigurationServiceExtensions
 {
     extension(IConfigurationService configurationService)
     {
+
+        // ---- UniFetcher: yt-dlp / ffmpeg updates (spec section 2) ----
+        public ToolUpdateMode ToolUpdateMode
+        {
+            get => configurationService.Get("ToolUpdateMode", ToolUpdateMode.Automatic);
+
+            set => configurationService.Set("ToolUpdateMode", value);
+        }
+
+        public YtdlpChannel YtdlpChannel
+        {
+            get => configurationService.Get("YtdlpChannel", YtdlpChannel.Nightly);
+
+            set => configurationService.Set("YtdlpChannel", value);
+        }
+
+        public string ToolsLastCheck
+        {
+            get => configurationService.Get("ToolsLastCheck", string.Empty);
+
+            set => configurationService.Set("ToolsLastCheck", value);
+        }
+
+        public string YtdlpActiveVersion
+        {
+            get => configurationService.Get("YtdlpActiveVersion", "bundled");
+
+            set => configurationService.Set("YtdlpActiveVersion", value);
+        }
+
+        public string YtdlpPreviousVersion
+        {
+            get => configurationService.Get("YtdlpPreviousVersion", string.Empty);
+
+            set => configurationService.Set("YtdlpPreviousVersion", value);
+        }
+
+        public string YtdlpSkippedVersion
+        {
+            get => configurationService.Get("YtdlpSkippedVersion", string.Empty);
+
+            set => configurationService.Set("YtdlpSkippedVersion", value);
+        }
+
+        public string FfmpegActiveVersion
+        {
+            get => configurationService.Get("FfmpegActiveVersion", "bundled");
+
+            set => configurationService.Set("FfmpegActiveVersion", value);
+        }
+
+        public string FfmpegPreviousVersion
+        {
+            get => configurationService.Get("FfmpegPreviousVersion", string.Empty);
+
+            set => configurationService.Set("FfmpegPreviousVersion", value);
+        }
+
+        public string FfmpegInstalledAt
+        {
+            get => configurationService.Get("FfmpegInstalledAt", string.Empty);
+
+            set => configurationService.Set("FfmpegInstalledAt", value);
+        }
         public bool AllowPreviewUpdates
         {
             get => configurationService.Get("AllowPreviewUpdates", false);

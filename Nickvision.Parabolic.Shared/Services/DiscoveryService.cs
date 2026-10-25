@@ -23,19 +23,21 @@ public class DiscoveryService : IDiscoveryService
     private readonly IThumbnailService _thumbnailService;
     private readonly ITranslationService _translationService;
     private readonly IYtdlpExecutableService _ytdlpExecutableService;
+    private readonly IToolUpdateService _toolUpdateService;
 
     static DiscoveryService()
     {
         BatchFileDelimiter = '|';
     }
 
-    public DiscoveryService(ILogger<DiscoveryService> logger, IConfigurationService configurationService, IThumbnailService thumbnailService, ITranslationService translationService, IYtdlpExecutableService ytdlpExecutableService)
+    public DiscoveryService(ILogger<DiscoveryService> logger, IConfigurationService configurationService, IThumbnailService thumbnailService, ITranslationService translationService, IYtdlpExecutableService ytdlpExecutableService, IToolUpdateService toolUpdateService)
     {
         _logger = logger;
         _configurationService = configurationService;
         _thumbnailService = thumbnailService;
         _translationService = translationService;
         _ytdlpExecutableService = ytdlpExecutableService;
+        _toolUpdateService = toolUpdateService;
     }
 
     public async Task<DiscoveryResult> GetForBatchFileAsync(string path, Credential? credential = null, CancellationToken cancellationToken = default)
@@ -64,7 +66,18 @@ public class DiscoveryService : IDiscoveryService
     private async Task<DiscoveryResult> GetForUrlAsync(Uri url, Credential? credential, string suggestedSaveFolder, string suggestedFilename, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation($"Discovering media for {url}...");
+        // UniFetcher: make sure yt-dlp was checked for updates in the last 6 hours before fetching
+        await _toolUpdateService.EnsureRecentCheckAsync(cancellationToken);
         var processResult = await _ytdlpExecutableService.ExecuteAsync(_ytdlpExecutableService.GetDiscoveryProcessArguments(url, credential), cancellationToken);
+        if (processResult.ExitCode != 0 && (string.IsNullOrEmpty(processResult.Output) || processResult.Output[0] != '{') && ToolUpdateService.IsExtractorError(processResult.Error))
+        {
+            // UniFetcher: extractor / "unsupported" errors are usually fixed by a newer yt-dlp: update and try once more
+            if (await _toolUpdateService.TryUpdateAfterExtractorErrorAsync(cancellationToken))
+            {
+                _logger.LogInformation($"Retrying discovery for {url} with the updated yt-dlp...");
+                processResult = await _ytdlpExecutableService.ExecuteAsync(_ytdlpExecutableService.GetDiscoveryProcessArguments(url, credential), cancellationToken);
+            }
+        }
         if (processResult.ExitCode != 0 && (string.IsNullOrEmpty(processResult.Output) || processResult.Output[0] != '{'))
         {
             _logger.LogError($"Failed to discover media for {url}: {processResult.Error.TrimEnd()}");

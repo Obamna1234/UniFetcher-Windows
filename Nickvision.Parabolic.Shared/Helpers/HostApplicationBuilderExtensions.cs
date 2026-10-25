@@ -38,6 +38,7 @@ public static class HostApplicationBuilderExtensions
             builder.Services.AddSingleton<IHistoryService, HistoryService>();
             builder.Services.AddSingleton<IRecoveryService, RecoveryService>();
             builder.Services.AddSingleton<IThumbnailService, ThumbnailService>();
+            builder.Services.AddSingleton<IToolUpdateService, ToolUpdateService>();
             builder.Services.AddSingleton<IYtdlpExecutableService, YtdlpExecutableService>();
             builder.Services.AddTransient<AddDownloadDialogController>();
             builder.Services.AddTransient<HistoryViewController>();
@@ -45,6 +46,7 @@ public static class HostApplicationBuilderExtensions
             builder.Services.AddSingleton<MainWindowController>();
             builder.Services.AddTransient<PreferencesViewController>();
             builder.Services.AddHostedService<ConfigurationMigrationService>();
+            builder.Services.AddHostedService<ToolUpdateScheduler>();
             return builder;
         }
     }

@@ -25,6 +25,7 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
     private static readonly string[] PartialDownloadFilePatterns;
 
     private readonly IDenoExecutableService _denoExecutableService;
+    private readonly IToolUpdateService _toolUpdateService;
 
     static YtdlpExecutableService()
     {
@@ -55,11 +56,15 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
         PartialDownloadFilePatterns = ["*.part*", "*.vtt", "*.srt", "*.ass", "*.lrc"];
     }
 
-    public YtdlpExecutableService(ILogger<YtdlpExecutableService> logger, ILogger<UpdaterService> updaterLogger, IConfigurationService configurationService, IDenoExecutableService denoExecutableService, IHttpClientFactory httpClientFactory)
+    public YtdlpExecutableService(ILogger<YtdlpExecutableService> logger, ILogger<UpdaterService> updaterLogger, IConfigurationService configurationService, IDenoExecutableService denoExecutableService, IToolUpdateService toolUpdateService, IHttpClientFactory httpClientFactory)
         : base(logger, "yt-dlp", YtdlpBundledVersion, YtdlpAssetName, configurationService, new UpdaterService(updaterLogger, "yt-dlp", "yt-dlp", httpClientFactory.CreateClient()), new UpdaterService(updaterLogger, "yt-dlp", "yt-dlp-nightly-builds", httpClientFactory.CreateClient()))
     {
         _denoExecutableService = denoExecutableService;
+        _toolUpdateService = toolUpdateService;
     }
+
+    /// <summary>UniFetcher: yt-dlp is chosen by the tool update service (installed update, or the bundled copy).</summary>
+    public override string ExecutablePath => _toolUpdateService.YtdlpPath;
 
     public IReadOnlyList<string> GetDiscoveryProcessArguments(Uri url, Credential? credential)
     {
@@ -73,7 +78,7 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
             "--ignore-errors",
             "--no-warnings",
             "--ffmpeg-location",
-            Desktop.System.Environment.FindDependency("ffmpeg") ?? "ffmpeg",
+            _toolUpdateService.FfmpegPath,
             "--js-runtimes",
             $"deno:{_denoExecutableService.ExecutablePath ?? "deno"}",
             "--paths",
@@ -143,7 +148,7 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
             "--no-mtime",
             "--no-embed-info-json",
             "--ffmpeg-location",
-            Desktop.System.Environment.FindDependency("ffmpeg") ?? "ffmpeg",
+            _toolUpdateService.FfmpegPath,
             "--js-runtimes",
             $"deno:{_denoExecutableService.ExecutablePath ?? "deno"}",
             "--paths",
@@ -320,7 +325,7 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
             if (_configurationService.CropAudioThumbnails && downloadOptions.FileType.IsAudio)
             {
                 arguments.Add("--exec");
-                arguments.Add($"before_dl:\"{Desktop.System.Environment.FindDependency("ffmpeg") ?? "ffmpeg"}\" -i %(thumbnails.-1.filepath)q -vf crop=\"'if(gt(ih,iw),iw,ih)':'if(gt(iw,ih),ih,iw)'\" %(thumbnails.-1.filepath)q.tmp.jpg");
+                arguments.Add($"before_dl:\"{_toolUpdateService.FfmpegPath}\" -i %(thumbnails.-1.filepath)q -vf crop=\"'if(gt(ih,iw),iw,ih)':'if(gt(iw,ih),ih,iw)'\" %(thumbnails.-1.filepath)q.tmp.jpg");
                 if (OperatingSystem.IsWindows())
                 {
                     arguments.Add("--exec");
@@ -564,28 +569,9 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
 
     public override async Task<bool> DownloadUpdateAsync(AppVersion version, IProgress<DownloadProgress>? progress = null)
     {
-        var path = OperatingSystem.IsWindows() ? Path.Combine(UserDirectories.LocalData, "yt-dlp.exe") : Path.Combine(UserDirectories.LocalData, "yt-dlp");
-        var res = version.BaseVersion.Revision > 0 ? await _previewUpdaterService!.DownloadReleaseAssetAsync(version, path, _assetName, true, progress) : await _updaterService.DownloadReleaseAssetAsync(version, path, _assetName, true, progress);
-        if (res)
-        {
-            var configKey = $"installed_{_executableName}_appversion";
-            await _configurationService.SetAsync(configKey, version, ApplicationJsonContext.Default.AppVersion);
-            if (!OperatingSystem.IsWindows())
-            {
-                using var process = new Process()
-                {
-                    StartInfo = new ProcessStartInfo("chmod", ["0755", path])
-                    {
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                    }
-                };
-                process.Start();
-                await process.WaitForExitAsync();
-                return process.ExitCode == 0;
-            }
-        }
-        return res;
+        // UniFetcher: updates go through the tool update service (channel, checksums, roll back)
+        var res = await _toolUpdateService.CheckAsync(true, progress);
+        return res.Outcome is ToolUpdateOutcome.Installed or ToolUpdateOutcome.UpToDate;
     }
 
     private string CookiesFromBrowserArgument

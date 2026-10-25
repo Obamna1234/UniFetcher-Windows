@@ -30,12 +30,13 @@ public class MainWindowController
     private readonly IRecoveryService _recoveryService;
     private readonly ITranslationService _translationService;
     private readonly IUpdaterService _updaterService;
+    private readonly IToolUpdateService _toolUpdateService;
     private readonly IYtdlpExecutableService _ytdlpExecutableService;
     private AppVersion _latestAppVersion;
     private AppVersion _latestYtdlpVersion;
     private AppVersion _latestDenoVersion;
 
-    public MainWindowController(ILogger<MainWindowController> logger, AppInfo appInfo, IArgumentsService argumentsService, IConfigurationService configurationService, IDatabaseService databaseService, IDenoExecutableService denoExecutableService, IDownloadService downloadService, INotificationService notificationService, IPowerService powerService, IRecoveryService recoveryService, ITranslationService translationService, IUpdaterService updaterService, IYtdlpExecutableService ytdlpExecutableService)
+    public MainWindowController(ILogger<MainWindowController> logger, AppInfo appInfo, IArgumentsService argumentsService, IConfigurationService configurationService, IDatabaseService databaseService, IDenoExecutableService denoExecutableService, IDownloadService downloadService, INotificationService notificationService, IPowerService powerService, IRecoveryService recoveryService, ITranslationService translationService, IUpdaterService updaterService, IToolUpdateService toolUpdateService, IYtdlpExecutableService ytdlpExecutableService)
     {
         _logger = logger;
         _appInfo = appInfo;
@@ -49,6 +50,8 @@ public class MainWindowController
         _recoveryService = recoveryService;
         _translationService = translationService;
         _updaterService = updaterService;
+        _toolUpdateService = toolUpdateService;
+        _toolUpdateService.UpdateFound += ToolUpdateService_UpdateFound;
         _ytdlpExecutableService = ytdlpExecutableService;
         _latestAppVersion = appInfo.Version!;
         _latestYtdlpVersion = _ytdlpExecutableService.BundledVersion;
@@ -124,53 +127,35 @@ public class MainWindowController
 
     public async Task CheckForUpdatesAsync(bool showNotificationForNoUpdates)
     {
-        _logger.LogInformation("Checking for updates...");
+        _logger.LogInformation("Checking for UniFetcher updates...");
         var stableAppVersion = await _updaterService.GetLatestStableVersionAsync();
-        var stableYtdlpVersion = await _ytdlpExecutableService.GetLatestStableVersionAsync();
         if (stableAppVersion is not null)
         {
             _latestAppVersion = stableAppVersion;
         }
-        if (stableYtdlpVersion is not null)
-        {
-            _latestYtdlpVersion = stableYtdlpVersion;
-        }
         if (_configurationService.AllowPreviewUpdates)
         {
             var previewAppVersion = await _updaterService.GetLatestPreviewVersionAsync();
-            var previewYtdlpVersion = await _ytdlpExecutableService.GetLatestPreviewVersionAsync();
             if (previewAppVersion is not null && previewAppVersion > stableAppVersion)
             {
                 _latestAppVersion = previewAppVersion;
             }
-            if (previewYtdlpVersion is not null && previewYtdlpVersion > stableYtdlpVersion)
-            {
-                _latestYtdlpVersion = previewYtdlpVersion;
-            }
         }
         if (_latestAppVersion > _appInfo.Version!)
         {
-            if (!OperatingSystem.IsLinux())
+            _logger.LogInformation($"New application update available: {_latestAppVersion}");
+            _notificationService.Send(new AppNotification(_translationService._("New {0} update available: {1}", _appInfo.ShortName!, _latestAppVersion.ToString()), NotificationSeverity.Success)
             {
-                _logger.LogInformation($"New application update available: {_latestAppVersion}");
-                _notificationService.Send(new AppNotification(_translationService._("New {0} update available: {1}", _appInfo.ShortName!, _latestAppVersion.ToString()), NotificationSeverity.Success)
-                {
-                    Action = "update"
-                });
-            }
-        }
-        else if (_latestYtdlpVersion > _ytdlpExecutableService.BundledVersion && _latestYtdlpVersion > _ytdlpExecutableService.InstalledVersion)
-        {
-            _logger.LogInformation($"New yt-dlp update available: {_latestYtdlpVersion}");
-            _notificationService.Send(new AppNotification(_translationService._("New yt-dlp update available: {0}", _latestYtdlpVersion.ToString()), NotificationSeverity.Success)
-            {
-                Action = "update-ytdlp"
+                Action = "update"
             });
+            return;
         }
-        else
+        // yt-dlp / ffmpeg are checked by the tool update service on start and every 12 hours.
+        // When the user asks from the Help menu, check them now too.
+        if (showNotificationForNoUpdates)
         {
-            _logger.LogInformation("No application updates available.");
-            if (showNotificationForNoUpdates)
+            var tools = await _toolUpdateService.CheckAsync();
+            if (tools.Outcome is ToolUpdateOutcome.UpToDate or ToolUpdateOutcome.Skipped)
             {
                 _notificationService.Send(new AppNotification(_translationService._("No update available"), NotificationSeverity.Warning));
             }
@@ -245,16 +230,14 @@ public class MainWindowController
 
     public async Task<string> GetDebugInformationAsync(string extraInformation = "")
     {
-        var ytdlpVersion = await _ytdlpExecutableService.GetExecutableVersionAsync();
+        var ytdlpVersion = await _toolUpdateService.GetYtdlpVersionAsync();
+        var ffmpegVersion = await _toolUpdateService.GetFfmpegVersionAsync();
         var denoVersion = await _denoExecutableService.GetExecutableVersionAsync();
-        var ffmpegVersion = await ExecuteAsync("ffmpeg", "-version");
-        var ariaVersion = await ExecuteAsync("aria2c", "--version");
         extraInformation += string.IsNullOrEmpty(extraInformation) ? string.Empty : "\n";
         extraInformation += $"Database encrypted: {_databaseService.IsEncrypted}\nLog path: {(_appInfo.IsPortable ? "app.log" : Path.Combine(UserDirectories.LocalData, _appInfo.Name, "app.log"))}";
-        extraInformation += $"\n\nyt-dlp: {(ytdlpVersion is not null ? ytdlpVersion.ToString() : "not found")}";
+        extraInformation += $"\n\nyt-dlp: {ytdlpVersion} ({_toolUpdateService.YtdlpPath})";
         extraInformation += $"\ndeno: {(denoVersion is not null ? denoVersion.ToString() : "not found")}";
-        extraInformation += $"\nffmpeg: {(!string.IsNullOrEmpty(ffmpegVersion) ? ffmpegVersion.Substring(ffmpegVersion.IndexOf("ffmpeg version") + 15, ffmpegVersion.IndexOf("Copyright") - 15) : "not found")}";
-        extraInformation += $"\naria2: {(!string.IsNullOrEmpty(ariaVersion) ? ariaVersion.Substring(ariaVersion.IndexOf("aria2 version") + 14, ariaVersion.IndexOf('\n') - 14) : "not found")}";
+        extraInformation += $"\nffmpeg: {ffmpegVersion} ({_toolUpdateService.FfmpegPath})";
         extraInformation += $"\n\n{await _configurationService.ToStringAsync()}";
         return Desktop.System.Environment.GetDebugInformation(_appInfo, extraInformation);
     }
@@ -397,14 +380,35 @@ public class MainWindowController
 
     public async Task YtdlpUpdateAsync(IProgress<DownloadProgress> progress)
     {
-        var res = await _ytdlpExecutableService.DownloadUpdateAsync(_latestYtdlpVersion, progress);
-        if (res)
+        var res = await _toolUpdateService.CheckAsync(true, progress);
+        if (res.Outcome == ToolUpdateOutcome.Failed)
         {
-            _notificationService.Send(new AppNotification(_translationService._("yt-dlp {0} installed successfully", _latestYtdlpVersion.ToString()), NotificationSeverity.Success));
+            _notificationService.Send(new AppNotification(_translationService._("Unable to download and install the yt-dlp update"), NotificationSeverity.Error)
+            {
+                Action = "error",
+                ActionParam = res.Error ?? string.Empty
+            });
         }
-        else
+        else if (res.Outcome == ToolUpdateOutcome.UpToDate)
         {
-            _notificationService.Send(new AppNotification(_translationService._("Unable to download and install the yt-dlp update"), NotificationSeverity.Error));
+            _notificationService.Send(new AppNotification(_translationService._("yt-dlp and ffmpeg are up to date"), NotificationSeverity.Success));
+        }
+        // "Installed" is announced by ToolUpdateService_UpdateFound
+    }
+
+    private void ToolUpdateService_UpdateFound(object? sender, ToolUpdateResult e)
+    {
+        if (e.Outcome == ToolUpdateOutcome.Available)
+        {
+            var what = e.YtdlpVersion is not null ? $"yt-dlp {e.YtdlpVersion}" : "ffmpeg";
+            _notificationService.Send(new AppNotification(_translationService._("New update available: {0}", what), NotificationSeverity.Success)
+            {
+                Action = "update-ytdlp"
+            });
+        }
+        else if (e.Outcome == ToolUpdateOutcome.Installed && e.YtdlpVersion is not null)
+        {
+            _notificationService.Send(new AppNotification(_translationService._("yt-dlp {0} installed successfully", e.YtdlpVersion), NotificationSeverity.Success));
         }
     }
 

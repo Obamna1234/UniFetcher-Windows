@@ -11,8 +11,8 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-# Keep these in step with YtdlpBundledVersion / DenoBundledVersion in the Shared project
-$YtdlpVersion = "2026.03.17"
+# yt-dlp: newest stable release at build time (the app then follows your chosen channel by itself).
+# deno: keep in step with DenoBundledVersion in the Shared project.
 $DenoVersion = "2.8.0"
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
@@ -22,8 +22,8 @@ New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 
 # yt-dlp
 $ytdlpAsset = if ($Arch -eq "arm64") { "yt-dlp_arm64.exe" } else { "yt-dlp.exe" }
-gh release download $YtdlpVersion -R yt-dlp/yt-dlp -p $ytdlpAsset -D $tmp
-if ($LASTEXITCODE -ne 0) { throw "Could not download $ytdlpAsset $YtdlpVersion" }
+gh release download -R yt-dlp/yt-dlp -p $ytdlpAsset -D $tmp
+if ($LASTEXITCODE -ne 0) { throw "Could not download the latest $ytdlpAsset" }
 Move-Item (Join-Path $tmp $ytdlpAsset) (Join-Path $OutDir "yt-dlp.exe") -Force
 
 # ffmpeg + ffprobe

@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Nickvision.Desktop.Application;
 using Nickvision.Desktop.Globalization;
 using Nickvision.Parabolic.Shared.Events;
@@ -20,6 +20,9 @@ public class DownloadService : IDisposable, IDownloadService
     private readonly IRecoveryService _recoveryService;
     private readonly ITranslationService _translationService;
     private readonly IYtdlpExecutableService _ytdlpService;
+    private readonly IToolUpdateService _toolUpdateService;
+    // Downloads already retried once after a yt-dlp update (spec: retry once only)
+    private readonly HashSet<string> _retriedAfterUpdate;
     private readonly Dictionary<int, Download> _downloading;
     private readonly Dictionary<int, Download> _queued;
     private readonly Dictionary<int, Download> _completed;
@@ -35,7 +38,7 @@ public class DownloadService : IDisposable, IDownloadService
     public int QueuedCount => _queued.Count;
     public int CompletedCount => _completed.Count;
 
-    public DownloadService(ILogger<DownloadService> logger, IConfigurationService configurationService, IHistoryService historyService, IRecoveryService recoveryService, ITranslationService translationService, IYtdlpExecutableService ytdlpService)
+    public DownloadService(ILogger<DownloadService> logger, IConfigurationService configurationService, IHistoryService historyService, IRecoveryService recoveryService, ITranslationService translationService, IYtdlpExecutableService ytdlpService, IToolUpdateService toolUpdateService)
     {
         _logger = logger;
         _configurationService = configurationService;
@@ -43,6 +46,8 @@ public class DownloadService : IDisposable, IDownloadService
         _recoveryService = recoveryService;
         _translationService = translationService;
         _ytdlpService = ytdlpService;
+        _toolUpdateService = toolUpdateService;
+        _retriedAfterUpdate = new HashSet<string>();
         _downloading = new Dictionary<int, Download>();
         _queued = new Dictionary<int, Download>();
         _completed = new Dictionary<int, Download>();
@@ -358,6 +363,19 @@ public class DownloadService : IDisposable, IDownloadService
         if (e.Status == DownloadStatus.Error)
         {
             _logger.LogError($"Download failed ({e.Id}): {download.Log}");
+            var retryKey = download.Options.Url.ToString() + "|" + download.FilePath;
+            if (ToolUpdateService.IsExtractorError(download.Log) && _retriedAfterUpdate.Add(retryKey))
+            {
+                // UniFetcher: extractor / "unsupported" error -> update yt-dlp if a newer one exists, then retry once
+                DownloadCompleted?.Invoke(this, e);
+                if (await _toolUpdateService.TryUpdateAfterExtractorErrorAsync())
+                {
+                    _logger.LogInformation($"Retrying download ({e.Id}) with the updated yt-dlp.");
+                    await RetryAsync(e.Id);
+                }
+                StartNextQueued();
+                return;
+            }
         }
         else if (e.Status == DownloadStatus.Success)
         {
@@ -368,6 +386,11 @@ public class DownloadService : IDisposable, IDownloadService
             _logger.LogDebug($"Download stopped ({e.Id}): {download.Log}");
         }
         DownloadCompleted?.Invoke(this, e);
+        StartNextQueued();
+    }
+
+    private void StartNextQueued()
+    {
         if (_queued.Count > 0 && _downloading.Count < _configurationService.MaxNumberOfActiveDownloads)
         {
             using var queuedEnumerator = _queued.GetEnumerator();

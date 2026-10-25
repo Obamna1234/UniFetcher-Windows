@@ -1,8 +1,9 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using Nickvision.Desktop.Application;
 using Nickvision.Desktop.Globalization;
 using Nickvision.Parabolic.Shared.Helpers;
 using Nickvision.Parabolic.Shared.Models;
+using Nickvision.Parabolic.Shared.Services;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -16,6 +17,7 @@ public class PreferencesViewController
 {
     private readonly IConfigurationService _configurationService;
     private readonly ITranslationService _translationService;
+    private readonly IToolUpdateService _toolUpdateService;
 
     public IReadOnlyList<SelectionItem<AudioCodec>> AudioCodecs { get; }
     public IReadOnlyList<SelectionItem<string>> AvailableTranslationLanguages { get; }
@@ -28,11 +30,28 @@ public class PreferencesViewController
     public IReadOnlyList<SelectionItem<SubtitleFormat>> SubtitleFormats { get; }
     public IReadOnlyList<SelectionItem<Theme>> Themes { get; }
     public IReadOnlyList<SelectionItem<VideoCodec>> VideoCodecs { get; }
+    public IReadOnlyList<SelectionItem<ToolUpdateMode>> ToolUpdateModes { get; }
+    public IReadOnlyList<SelectionItem<YtdlpChannel>> YtdlpChannels { get; }
 
-    public PreferencesViewController(IConfigurationService configurationService, ITranslationService translationService)
+    public PreferencesViewController(IConfigurationService configurationService, ITranslationService translationService, IToolUpdateService toolUpdateService)
     {
         _configurationService = configurationService;
         _translationService = translationService;
+        _toolUpdateService = toolUpdateService;
+        var mode = _configurationService.ToolUpdateMode;
+        ToolUpdateModes = new List<SelectionItem<ToolUpdateMode>>()
+        {
+            new SelectionItem<ToolUpdateMode>(Models.ToolUpdateMode.Automatic, _translationService._("Update automatically"), mode == Models.ToolUpdateMode.Automatic),
+            new SelectionItem<ToolUpdateMode>(Models.ToolUpdateMode.AskFirst, _translationService._("Ask me first"), mode == Models.ToolUpdateMode.AskFirst),
+            new SelectionItem<ToolUpdateMode>(Models.ToolUpdateMode.Off, _translationService._("Off"), mode == Models.ToolUpdateMode.Off)
+        };
+        var channel = _configurationService.YtdlpChannel;
+        YtdlpChannels = new List<SelectionItem<YtdlpChannel>>()
+        {
+            new SelectionItem<YtdlpChannel>(Models.YtdlpChannel.Nightly, _translationService._("Nightly (fastest site fixes)"), channel == Models.YtdlpChannel.Nightly),
+            new SelectionItem<YtdlpChannel>(Models.YtdlpChannel.Stable, _translationService._("Stable"), channel == Models.YtdlpChannel.Stable),
+            new SelectionItem<YtdlpChannel>(Models.YtdlpChannel.Master, _translationService._("Master"), channel == Models.YtdlpChannel.Master)
+        };
         var selectedHistoryLength = _configurationService.HistoryLength;
         AudioCodecs = new List<SelectionItem<AudioCodec>>()
         {
@@ -410,4 +429,40 @@ public class PreferencesViewController
         _configurationService.PostprocessingArguments = PostprocessingArguments.ToList();
         return null;
     }
+
+    // ---- UniFetcher: yt-dlp / ffmpeg updates ----
+    public SelectionItem<ToolUpdateMode> ToolUpdateMode
+    {
+        set => _configurationService.ToolUpdateMode = value.Value;
+    }
+
+    public SelectionItem<YtdlpChannel> YtdlpChannel
+    {
+        set => _configurationService.YtdlpChannel = value.Value;
+    }
+
+    public bool CanRollBackTools => _toolUpdateService.CanRollBack;
+
+    public async Task<string> GetToolStatusAsync()
+    {
+        var ytdlp = await _toolUpdateService.GetYtdlpVersionAsync();
+        var ffmpeg = await _toolUpdateService.GetFfmpegVersionAsync();
+        var last = _toolUpdateService.LastCheck;
+        var lastText = last is null ? _translationService._("never") : last.Value.ToLocalTime().ToString("g");
+        return _translationService._("yt-dlp {0}  ·  ffmpeg {1}\nLast checked: {2}", ytdlp, ffmpeg, lastText);
+    }
+
+    public async Task<string> CheckToolsNowAsync()
+    {
+        var res = await _toolUpdateService.CheckAsync(_configurationService.ToolUpdateMode != Models.ToolUpdateMode.AskFirst);
+        return res.Outcome switch
+        {
+            ToolUpdateOutcome.Installed => res.YtdlpVersion is not null ? _translationService._("Installed yt-dlp {0}", res.YtdlpVersion) : _translationService._("Installed a newer ffmpeg"),
+            ToolUpdateOutcome.Available => _translationService._("An update is available. Use the Update button at the top of the window to install it."),
+            ToolUpdateOutcome.Failed => _translationService._("Could not check for updates: {0}", res.Error ?? string.Empty),
+            _ => _translationService._("yt-dlp and ffmpeg are up to date")
+        };
+    }
+
+    public async Task<string> RollBackToolsAsync() => await _toolUpdateService.RollBackAsync() ? _translationService._("Switched back to the previous version") : _translationService._("There is no previous version to go back to");
 }
