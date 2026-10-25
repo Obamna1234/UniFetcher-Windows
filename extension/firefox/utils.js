@@ -1,4 +1,4 @@
-// Shared utility functions for Parabolic Extension
+// Shared utility functions for UniFetcher Extension
 
 // Check if a hostname is a valid YouTube domain
 function isYouTubeHost(hostname) {

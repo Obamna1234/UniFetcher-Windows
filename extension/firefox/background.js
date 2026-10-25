@@ -1,5 +1,5 @@
 // Function to format the URL and open the scheme link
-function openParabolicUrl(url) {
+function openUniFetcherUrl(url) {
   browser.storage.sync.get(['trimPlaylist'], (result) => {
     if (browser.runtime.lastError) {
       console.error('Storage error:', browser.runtime.lastError);
@@ -11,7 +11,7 @@ function openParabolicUrl(url) {
     // Remove "https://" or "http://" from the URL
     let formattedUrl = processedUrl.replace(/^https?:\/\//, '');
     // Construct the final scheme URL
-    let schemeUrl = `parabolic://${formattedUrl}`;
+    let schemeUrl = `unifetcher://${formattedUrl}`;
 
     // Use the browser.tabs API to open the URL scheme
     browser.tabs.update({ url: schemeUrl });
@@ -21,15 +21,15 @@ function openParabolicUrl(url) {
 // Function to create the context menu item
 function createContextMenu() {
   browser.contextMenus.create({
-    id: "openParabolicLink",
-    title: "Open link in Parabolic",
+    id: "openUniFetcherLink",
+    title: "Open link in UniFetcher",
     contexts: ["link", "page"]
   });
 }
 
 // Function to remove the context menu item
 function removeContextMenu() {
-  browser.contextMenus.remove("openParabolicLink");
+  browser.contextMenus.remove("openUniFetcherLink");
 }
 
 // Initialize context menu based on stored settings
@@ -52,32 +52,32 @@ browser.storage.onChanged.addListener((changes, namespace) => {
   }
 });
 
-// Listener for context menu: Open link in Parabolic clicks
+// Listener for context menu: Open link in UniFetcher clicks
 browser.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "openParabolicLink") {
+  if (info.menuItemId === "openUniFetcherLink") {
     // If the right click was on a link, use the link's URL.
     // Otherwise, use the current tab's URL.
     const urlToOpen = info.linkUrl || info.pageUrl;
-    openParabolicUrl(urlToOpen);
+    openUniFetcherUrl(urlToOpen);
   }
 });
 
 // Listener for action (Extension icon) clicks
 browser.action.onClicked.addListener((tab) => {
   // Use the current tab's URL for the action button
-  openParabolicUrl(tab.url);
+  openUniFetcherUrl(tab.url);
 });
 
 // Listener for Keyboard shorcut command(Alt+P, Alt+O)
 browser.commands.onCommand.addListener((command) => {
-  if (command === "open-parabolic-current-tab") {
+  if (command === "open-unifetcher-current-tab") {
     browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length > 0) {
-        openParabolicUrl(tabs[0].url);
+        openUniFetcherUrl(tabs[0].url);
       }
     });
   };
-  if (command === "open-parabolic-options") {
+  if (command === "open-unifetcher-options") {
     browser.runtime.openOptionsPage();
   }
 });

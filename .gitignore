@@ -406,3 +406,32 @@ FodyWeavers.xsd
 
 # macOS
 .DS_Store
+## ---- UniFetcher: never commit secrets, cookies or personal files ----
+# Bundled programs downloaded during the build
+inno/*.exe
+out/
+portable/
+# Secrets and signing keys (these belong in GitHub Secrets)
+.env
+.env.*
+*.pfx
+*.p12
+*.pem
+*.key
+*.jks
+*.keystore
+secrets.json
+amo-credentials*
+web-ext-artifacts/
+*.xpi
+# Cookies and browser data
+cookies.txt
+*cookies*.txt
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+UniFetcherProfile/
+# App data from portable test runs
+app.db
+app.log
+*.log

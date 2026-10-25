@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Parabolic Extension",
+  "name": "UniFetcher Extension",
   "version": "1.4",
-  "description": "Opens specified links in Parabolic for download",
-  "author": "NickvisionApps & OwlRoyalty",
-  "homepage_url": "https://github.com/NickvisionApps/Parabolic",
+  "description": "Opens specified links in UniFetcher for download",
+  "author": "UniFetcher (based on the Parabolic extension by NickvisionApps & OwlRoyalty)",
+  "homepage_url": "https://github.com/Obamna1234/UniFetcher-Windows",
   "browser_specific_settings": {
   "gecko": {
-    "id": "addon@nickvision.org",
+    "id": "unifetcher-extension@obamna1234.github.io",
     "data_collection_permissions": {
       "required": ["none"]
     } 
@@ -35,19 +35,19 @@
     "128": "icons/icon128.png"
   },
   "commands": {
-    "open-parabolic-current-tab": {
+    "open-unifetcher-current-tab": {
       "suggested_key": {
         "default": "Alt+P",
         "mac": "Alt+P"
       },
-      "description": "Opens current tab in Parabolic."
+      "description": "Opens current tab in UniFetcher."
     },
-    "open-parabolic-options": {
+    "open-unifetcher-options": {
       "suggested_key": {
         "default": "Alt+O",
         "mac": "Alt+O"
       },
-      "description": "Opens Parabolic Options page."
+      "description": "Opens UniFetcher Options page."
     }
   }
 }

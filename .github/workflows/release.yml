@@ -1,0 +1,93 @@
+# Makes a GitHub Release when you push a version tag, e.g. v1.0.0
+# (see HOW_TO.md, "Releasing a new version").
+name: Release
+on:
+  push:
+    tags: [ "v*" ]
+permissions:
+  contents: write
+env:
+  PROJECT_NAME: Nickvision.Parabolic.WinUI
+jobs:
+  build:
+    name: "Build (${{ matrix.variant.arch }})"
+    strategy:
+      matrix:
+        variant:
+          - arch: x64
+            runner: windows-2025-vs2026
+            subsys: mingw64
+            type: x86_64
+          - arch: arm64
+            runner: windows-11-arm
+            subsys: clangarm64
+            type: clang-aarch64
+    runs-on: ${{ matrix.variant.runner }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: "Read version from tag"
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart("v")
+          if ($v -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$') { throw "Tag must look like v1.2.3 (got ${{ github.ref_name }})" }
+          echo "VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - uses: msys2/setup-msys2@v2
+        id: msys2
+        with:
+          msystem: ${{ matrix.variant.subsys }}
+          install: mingw-w64-${{ matrix.variant.type }}-gettext-tools
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: "Set up tools"
+        shell: pwsh
+        run: echo "${{ steps.msys2.outputs.msys2-location }}\${{ matrix.variant.subsys }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: "Build app"
+        shell: pwsh
+        run: |
+          $vsInstallPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          Import-Module "$vsInstallPath\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $vsInstallPath -SkipAutomaticLocation
+          dotnet restore ${{ env.PROJECT_NAME }} --runtime win-${{ matrix.variant.arch }} /p:PublishReadyToRun=true
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          dotnet publish ${{ env.PROJECT_NAME }} -c Release --no-restore --runtime win-${{ matrix.variant.arch }} /p:Platform=${{ matrix.variant.arch }} /p:Version=$("${{ env.VERSION }}".Split('-')[0]) /p:InformationalVersion=${{ env.VERSION }}
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: "Package"
+        shell: pwsh
+        run: scripts/package.ps1 -Arch ${{ matrix.variant.arch }} -Version ${{ env.VERSION }} -PublishDir "${{ env.PROJECT_NAME }}/bin/${{ matrix.variant.arch }}/Release/net10.0-windows10.0.19041.0/win-${{ matrix.variant.arch }}/publish" -OutDir out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.variant.arch }}
+          path: out/*
+  publish:
+    name: "Publish GitHub Release"
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: "Create or fill in the release"
+        run: |
+          ls -l dist
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # The release was made on the website (Draft a new release): add the files to it
+            gh release upload "$tag" dist/* -R "$GITHUB_REPOSITORY" --clobber
+            body=$(gh release view "$tag" -R "$GITHUB_REPOSITORY" --json body -q .body)
+            if [ -z "$body" ]; then
+              notes=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$tag" -q .body)
+              gh release edit "$tag" -R "$GITHUB_REPOSITORY" --notes "$notes"
+            fi
+          else
+            prerelease=""
+            case "$tag" in *-*) prerelease="--prerelease";; esac
+            gh release create "$tag" dist/* -R "$GITHUB_REPOSITORY" --title "UniFetcher $tag" --generate-notes $prerelease
+          fi

@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Parabolic Extension",
+  "name": "UniFetcher Extension",
   "version": "1.4",
-  "description": "Opens specified links in Parabolic for download",
-  "homepage_url": "https://github.com/NickvisionApps/Parabolic",
+  "description": "Opens specified links in UniFetcher for download",
+  "homepage_url": "https://github.com/Obamna1234/UniFetcher-Windows",
   "permissions": [
     "activeTab",
     "contextMenus",
@@ -26,19 +26,19 @@
     "128": "icons/icon128.png"
   },
   "commands": {
-    "open-parabolic-current-tab": {
+    "open-unifetcher-current-tab": {
       "suggested_key": {
         "default": "Alt+P",
         "mac": "Alt+P"
       },
-      "description": "Opens current tab in Parabolic."
+      "description": "Opens current tab in UniFetcher."
     },
-    "open-parabolic-options": {
+    "open-unifetcher-options": {
       "suggested_key": {
         "default": "Alt+O",
         "mac": "Alt+O"
       },
-      "description": "Opens Parabolic Options page."
+      "description": "Opens UniFetcher Options page."
     }
   }
 }

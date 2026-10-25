@@ -1,18 +1,9 @@
-![](resources/banner.png)
+# UniFetcher browser extension
 
-# Features
-- **One-Click Capture**: Send the URL of your active tab to Parabolic instantly by clicking the Extension/Add-on icon.
-- **Context Menu Integration**: Right-click and select: `Open link in Parabolic` on any specific link to send that exact URL without needing to open the page. Otherwise, use the current tab's URL.
-- **Keyboard shortcut**: Press `Alt` + `P` to send the URL of your active tab to Parabolic.
-- **Lightweight & Fast**: Designed to be fast, unobtrusive, easy to use, and respects your privacy.
+Sends links from Firefox or Brave/Chrome to the UniFetcher app on the same PC. It collects nothing and sends nothing anywhere except to UniFetcher. Based on the Parabolic extension by NickvisionApps & OwlRoyalty.
 
-# Installation
-> [!NOTE]  
-> The Parabolic Extension should be available on the Chrome Web Store soon. In the meantime, use the Local Installation. 
-#### Chrome Local Install
-1. Go to: `chrome://extensions`.
-2. Enable `Developer mode`.
-3. Click the `Load unpacked` button and select the extension folder.
+- Click the toolbar button to send the current page.
+- Right-click a link → **Open link in UniFetcher**.
+- `Alt+P` sends the current page.
 
-##### Firefox
-[![get-the-addon](resources/firefox.png)](https://addons.mozilla.org/en-US/firefox/addon/parabolic/)
+Installing: see [HOW_TO.md](../HOW_TO.md#install-the-browser-extension). Release zips are built automatically from the `firefox` and `chrome` folders.

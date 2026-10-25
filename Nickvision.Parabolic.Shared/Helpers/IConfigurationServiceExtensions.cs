@@ -1,4 +1,4 @@
-﻿using Nickvision.Desktop.Application;
+using Nickvision.Desktop.Application;
 using Nickvision.Desktop.Filesystem;
 using Nickvision.Parabolic.Shared.Models;
 using System;
@@ -405,7 +405,8 @@ public static class IConfigurationServiceExtensions
 
         public bool UseAria
         {
-            get => configurationService.Get("UseAria", false);
+            // aria2c is not bundled with UniFetcher (no official Windows build source), so it is always off
+            get => false;
 
             set => configurationService.Set("UseAria", value);
         }
