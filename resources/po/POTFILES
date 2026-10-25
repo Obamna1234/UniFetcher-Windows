@@ -1,17 +1,3 @@
-Nickvision.Parabolic.GNOME/Blueprints/AddDownloadDialog.blp
-Nickvision.Parabolic.GNOME/Blueprints/DownloadRow.blp
-Nickvision.Parabolic.GNOME/Blueprints/HistoryDialog.blp
-Nickvision.Parabolic.GNOME/Blueprints/KeyringDialog.blp
-Nickvision.Parabolic.GNOME/Blueprints/LoadingDialog.blp
-Nickvision.Parabolic.GNOME/Blueprints/MainWindow.blp
-Nickvision.Parabolic.GNOME/Blueprints/PreferencesDialog.blp
-Nickvision.Parabolic.GNOME/Blueprints/ShortcutsDialog.blp
-Nickvision.Parabolic.GNOME/Controls/DownloadRow.cs
-Nickvision.Parabolic.GNOME/Views/AddDownloadDialog.cs
-Nickvision.Parabolic.GNOME/Views/HistoryDialog.cs
-Nickvision.Parabolic.GNOME/Views/KeyringDialog.cs
-Nickvision.Parabolic.GNOME/Views/MainWindow.cs
-Nickvision.Parabolic.GNOME/Views/PreferencesDialog.cs
 Nickvision.Parabolic.Shared/Controllers/AddDownloadDialogController.cs
 Nickvision.Parabolic.Shared/Controllers/KeyringViewController.cs
 Nickvision.Parabolic.Shared/Controllers/MainWindowController.cs

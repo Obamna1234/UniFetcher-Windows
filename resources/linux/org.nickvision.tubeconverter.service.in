@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=@APP_ID@
-Exec=@LIB_DIR@/@OUTPUT_NAME@ --gapplication-service
