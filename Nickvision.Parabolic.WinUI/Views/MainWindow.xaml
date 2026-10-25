@@ -13,7 +13,7 @@
         <MicaBackdrop/>
     </Window.SystemBackdrop>
 
-    <Grid x:Name="MainGrid" Loaded="Window_Loaded">
+    <Grid x:Name="MainGrid" Loaded="Window_Loaded" AllowDrop="True" DragOver="MainGrid_DragOver" Drop="MainGrid_Drop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -42,6 +42,16 @@
 
                                 <MenuFlyoutItem.Icon>
                                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE710;"/>
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+
+                            <MenuFlyoutItem x:Name="MenuBulkImport" Click="BulkImport">
+                                <MenuFlyoutItem.KeyboardAccelerators>
+                                    <KeyboardAccelerator Key="B" Modifiers="Control"/>
+                                </MenuFlyoutItem.KeyboardAccelerators>
+
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE8B5;"/>
                                 </MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
 

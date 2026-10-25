@@ -123,7 +123,7 @@ public class SiteSessionService : ISiteSessionService
         {
             return SessionProblem.HumanCheck;
         }
-        if (Has("login required", "Sign in to", "log in to", "logged-in", "requires authentication", "account is required", "only available for registered users", "members-only", "Use --cookies-from-browser or --cookies for the authentication", "private video", "This video is private"))
+        if (Has("login required", "Sign in to", "log in to", "logged-in", "requires authentication", "account is required", "only available for registered users", "members-only", "Use --cookies-from-browser or --cookies for the authentication"))
         {
             // A private video can't be fixed by logging in unless it's yours; still worth a look by you
             return SessionProblem.NeedsLogin;

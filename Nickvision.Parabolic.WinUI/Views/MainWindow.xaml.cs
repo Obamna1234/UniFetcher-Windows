@@ -37,6 +37,7 @@ public sealed partial class MainWindow : Window
     private RoutedEventHandler? _notificationClickHandler;
     // Only one dialog can be open at a time; links arriving from the extension wait their turn
     private readonly System.Threading.SemaphoreSlim _dialogGate = new System.Threading.SemaphoreSlim(1, 1);
+    private BulkImportWindow? _bulkImportWindow;
 
     public MainWindow(IServiceProvider serviceProvider, MainWindowController controller, AppInfo appInfo, IEventsService eventsService, ITranslationService translationService)
     {
@@ -84,6 +85,7 @@ public sealed partial class MainWindow : Window
         LblTitle.Text = _appInfo.ShortName;
         MenuFile.Title = _translationService._("File");
         MenuAddDownload.Text = _translationService._("Add Download");
+        MenuBulkImport.Text = _translationService._("Bulk Import…");
         MenuExit.Text = _translationService._("Exit");
         MenuEdit.Title = _translationService._("Edit");
         MenuKeyring.Text = _translationService._("Keyring");
@@ -260,6 +262,17 @@ public sealed partial class MainWindow : Window
             {
                 InfoBar.IsOpen = false;
                 await _controller.OpenInProfileAsync(url);
+            };
+            BtnInfoBar.Click += _notificationClickHandler;
+        }
+        else if (e.Notification.Action == "bulk-report" && !string.IsNullOrEmpty(e.Notification.ActionParam))
+        {
+            BtnInfoBar.Content = _translationService._("Open report");
+            var jobId = e.Notification.ActionParam;
+            _notificationClickHandler = async (_, _) =>
+            {
+                InfoBar.IsOpen = false;
+                await GetBulkImportWindow().ShowJobAsync(jobId);
             };
             BtnInfoBar.Click += _notificationClickHandler;
         }
@@ -554,13 +567,42 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>Opens Bulk Import with these links (stage 6). Until then, they're added one by one.</summary>
-    private async Task OpenBulkImportAsync(IReadOnlyList<Uri> urls)
+    /// <summary>UniFetcher: opens (or brings back) the Bulk Import window.</summary>
+    private BulkImportWindow GetBulkImportWindow()
     {
-        InfoBar.Message = _translationService._("Received {0} links. Bulk Import is coming in the next update.", urls.Count);
-        InfoBar.Severity = InfoBarSeverity.Informational;
-        InfoBar.IsOpen = true;
-        await Task.CompletedTask;
+        if (_bulkImportWindow is null)
+        {
+            _bulkImportWindow = new BulkImportWindow(_serviceProvider.GetRequiredService<BulkImportController>(), _translationService);
+            _bulkImportWindow.Closed += (_, _) => _bulkImportWindow = null;
+        }
+        _bulkImportWindow.Activate();
+        return _bulkImportWindow;
+    }
+
+    private async Task OpenBulkImportAsync(IReadOnlyList<Uri> urls) => await GetBulkImportWindow().LoadLinksAsync(urls);
+
+    private async void BulkImport(object? sender, RoutedEventArgs e) => await GetBulkImportWindow().ShowInputAsync();
+
+    private void MainGrid_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+        {
+            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+            e.DragUIOverride.Caption = _translationService._("Bulk Import these links");
+        }
+    }
+
+    private async void MainGrid_Drop(object sender, DragEventArgs e)
+    {
+        // UniFetcher: drop an exported list (bookmarks HTML, JSON, CSV, text) onto the window to Bulk Import it
+        if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+        {
+            var items = await e.DataView.GetStorageItemsAsync();
+            if (items.Count > 0 && items[0] is Windows.Storage.StorageFile file)
+            {
+                await GetBulkImportWindow().LoadFileAsync(file.Path);
+            }
+        }
     }
 
     private async Task AddDownloadAsync(Uri? uri)

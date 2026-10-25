@@ -54,6 +54,10 @@ public static class HostApplicationBuilderExtensions
             builder.Services.AddSingleton<InboxService>();
             builder.Services.AddSingleton<IInboxService>(sp => sp.GetRequiredService<InboxService>());
             builder.Services.AddHostedService(sp => sp.GetRequiredService<InboxService>());
+            builder.Services.AddSingleton<BulkImportService>();
+            builder.Services.AddSingleton<IBulkImportService>(sp => sp.GetRequiredService<BulkImportService>());
+            builder.Services.AddHostedService(sp => sp.GetRequiredService<BulkImportService>());
+            builder.Services.AddTransient<BulkImportController>();
             return builder;
         }
     }

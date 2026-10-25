@@ -1,6 +1,14 @@
 # Changelog
 
 ## Unreleased
+### Bulk Import (stage 6)
+- File → Bulk Import (Ctrl+B): paste, import a file, drag a file onto the window, or "Send all tabs" from the extension.
+- Reads plain/mixed text, bookmarks HTML, Firefox bookmark backup JSON, tab-manager JSON/CSV and OneTab lists.
+- Summary before starting: totals, per-site tick boxes, duplicates in the list and already-downloaded videos (skipped), non-web links, free space; playlists/channels listed separately to expand on request (with a warning).
+- Uses the "Smart: best up to 1080p" quality rule and the normal queue. Progress is saved and resumes after closing or restarting; re-importing only picks up what's left.
+- Errors are sorted: temporary ones retried 3 times with growing waits, extractor errors update yt-dlp and retry once, permanent ones marked Unavailable, pages without video marked No video found, logins/CAPTCHAs marked Needs my action.
+- End report with Retry failed, Export list of failed links and Copy report.
+
 ### Browser extension (stage 5)
 - One extension for Firefox and Brave/Chrome/Edge: send this page, right-click "Download with UniFetcher", Alt+Shift+U, "Send all tabs" (this window / all windows) to Bulk Import.
 - Video detection: the toolbar button shows how many video files/streams (MP4, WebM, HLS, DASH) the page loaded; pick one to send.

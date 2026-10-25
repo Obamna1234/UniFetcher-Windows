@@ -41,6 +41,7 @@ public class DownloadService : IDisposable, IDownloadService
     public event EventHandler<DownloadEventArgs>? DownloadRetired;
     public event EventHandler<DownloadEventArgs>? DownloadStartedFromQueue;
     public event EventHandler<DownloadEventArgs>? DownloadStopped;
+    public event EventHandler<DownloadFinishedEventArgs>? DownloadFinished;
 
     public int DownloadingCount => _downloading.Count;
     public int QueuedCount => _queued.Count;
@@ -94,7 +95,10 @@ public class DownloadService : IDisposable, IDownloadService
         _logger.LogDebug($"Adding download ({download.Id}): {JsonSerializer.Serialize(options, ApplicationJsonContext.Default.DownloadOptions)}");
         download.Completed += Download_Completed;
         download.ProgressChanged += Download_ProgressChanged;
-        await _recoveryService.AddAsync(new RecoverableDownload(download.Id, download.Options));
+        if (string.IsNullOrEmpty(options.BulkItemId))
+        {
+            await _recoveryService.AddAsync(new RecoverableDownload(download.Id, download.Options));
+        }
         if (!excludeFromHistory)
         {
             await _historyService.AddAsync(new HistoricDownload(download.Options.Url)
@@ -131,7 +135,10 @@ public class DownloadService : IDisposable, IDownloadService
             _logger.LogDebug($"Adding download ({download.Id}): {JsonSerializer.Serialize(option, ApplicationJsonContext.Default.DownloadOptions)}");
             download.Completed += Download_Completed;
             download.ProgressChanged += Download_ProgressChanged;
-            recoverableDownloads.Add(new RecoverableDownload(download.Id, download.Options));
+            if (string.IsNullOrEmpty(option.BulkItemId))
+            {
+                recoverableDownloads.Add(new RecoverableDownload(download.Id, download.Options));
+            }
             if (!excludeFromHistory)
             {
                 historicDownloads.Add(new HistoricDownload(download.Options.Url)
@@ -298,6 +305,7 @@ public class DownloadService : IDisposable, IDownloadService
             await _recoveryService.RemoveAsync(id);
             _logger.LogDebug($"Stopped download ({id}).");
             DownloadStopped?.Invoke(this, new DownloadEventArgs(id));
+            DownloadFinished?.Invoke(this, new DownloadFinishedEventArgs(download.Options, DownloadStatus.Stopped, download.Log, download.FilePath));
             return true;
         }
         _logger.LogWarning($"Unable to stop download ({id}), not found.");
@@ -325,6 +333,7 @@ public class DownloadService : IDisposable, IDownloadService
             _completed.Add(pair.Key, pair.Value);
             _logger.LogDebug($"Stopped download ({pair.Key}).");
             DownloadStopped?.Invoke(this, new DownloadEventArgs(pair.Key));
+            DownloadFinished?.Invoke(this, new DownloadFinishedEventArgs(pair.Value.Options, DownloadStatus.Stopped, pair.Value.Log, pair.Value.FilePath));
         }
         foreach (var pair in _queued)
         {
@@ -335,6 +344,7 @@ public class DownloadService : IDisposable, IDownloadService
             _completed.Add(pair.Key, pair.Value);
             _logger.LogDebug($"Stopped download ({pair.Key}).");
             DownloadStopped?.Invoke(this, new DownloadEventArgs(pair.Key));
+            DownloadFinished?.Invoke(this, new DownloadFinishedEventArgs(pair.Value.Options, DownloadStatus.Stopped, pair.Value.Log, pair.Value.FilePath));
         }
         _downloading.Clear();
         _queued.Clear();
@@ -421,6 +431,10 @@ public class DownloadService : IDisposable, IDownloadService
                     _logger.LogInformation($"Retrying download ({e.Id}) with the updated yt-dlp.");
                     await RetryAsync(e.Id);
                 }
+                else
+                {
+                    DownloadFinished?.Invoke(this, new DownloadFinishedEventArgs(download.Options, e.Status, download.Log, download.FilePath));
+                }
                 StartNextQueued();
                 return;
             }
@@ -444,6 +458,7 @@ public class DownloadService : IDisposable, IDownloadService
             _logger.LogDebug($"Download stopped ({e.Id}): {download.Log}");
         }
         DownloadCompleted?.Invoke(this, e);
+        DownloadFinished?.Invoke(this, new DownloadFinishedEventArgs(download.Options, e.Status, download.Log, download.FilePath));
         StartNextQueued();
     }
 
@@ -504,7 +519,10 @@ public class DownloadService : IDisposable, IDownloadService
         {
             _queued.Add(download.Id, download);
         }
-        await _recoveryService.AddAsync(new RecoverableDownload(download.Id, download.Options));
+        if (string.IsNullOrEmpty(download.Options.BulkItemId))
+        {
+            await _recoveryService.AddAsync(new RecoverableDownload(download.Id, download.Options));
+        }
         DownloadAdded?.Invoke(this, new DownloadAddedEventArgs(download));
     }
 

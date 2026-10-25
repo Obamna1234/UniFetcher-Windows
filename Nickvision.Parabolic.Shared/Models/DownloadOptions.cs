@@ -33,6 +33,8 @@ public class DownloadOptions
     /// <summary>UniFetcher: cookie snapshot folder of the UniFetcher Firefox profile for this download (set just before it starts; never saved).</summary>
     [JsonIgnore]
     public string? CookieProfile { get; set; }
+    /// <summary>UniFetcher: id of the Bulk Import item this download belongs to (empty for normal downloads).</summary>
+    public string BulkItemId { get; set; } = string.Empty;
 
     public DownloadOptions(Uri url)
     {

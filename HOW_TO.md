@@ -9,11 +9,12 @@ A plain-language guide. Sections marked *(coming soon)* describe features still 
    - [yt-dlp and ffmpeg updates](#yt-dlp-and-ffmpeg-updates)
 4. [The UniFetcher Firefox profile](#the-unifetcher-firefox-profile)
 5. [Install the browser extension](#install-the-browser-extension)
-6. [Using a VPN (PIA)](#using-a-vpn-pia)
-7. [Downloading to an external hard drive](#downloading-to-an-external-hard-drive)
-8. [Copy an error log and report a bug](#copy-an-error-log-and-report-a-bug)
-9. [Release a new version](#release-a-new-version)
-10. [Test a build before releasing it](#test-a-build-before-releasing-it)
+6. [Bulk Import (150+ links)](#bulk-import-150-links)
+7. [Using a VPN (PIA)](#using-a-vpn-pia)
+8. [Downloading to an external hard drive](#downloading-to-an-external-hard-drive)
+9. [Copy an error log and report a bug](#copy-an-error-log-and-report-a-bug)
+10. [Release a new version](#release-a-new-version)
+11. [Test a build before releasing it](#test-a-build-before-releasing-it)
 
 ---
 
@@ -117,6 +118,37 @@ Firefox only keeps extensions signed by Mozilla. Signing is free and the extensi
 5. That's it. The next release (see "Release a new version") signs the Firefox extension automatically. Never paste these values anywhere else.
 
 Without these secrets, releases still work; the Firefox extension just isn't signed (you can only try it temporarily via `about:debugging` → **This Firefox** → **Load Temporary Add-on…**).
+
+## Bulk Import (150+ links)
+
+Hand UniFetcher a long list once and let it work through it.
+
+**Getting the list in** (any of these):
+- In the browser: the extension's **All tabs → This window / All windows**.
+- In UniFetcher: **File → Bulk Import…** (Ctrl+B), then paste the links, or click **Import from file…**.
+- Drag an exported file onto the UniFetcher window.
+
+Formats it understands by itself: links one per line or mixed into text (e.g. copied from your phone), bookmarks HTML exports, Firefox bookmark backups (`.json`), and tab-manager exports (JSON, CSV, OneTab).
+
+Exporting tabs without the extension:
+- **Firefox**: right-click any tab → **Select All Tabs**, right-click again → **Bookmark Tabs…** → save into a new folder. Then **Bookmarks → Manage Bookmarks** (Ctrl+Shift+O) → **Import and Backup → Export Bookmarks to HTML…**.
+- **Brave / Chrome / Edge**: **Ctrl+Shift+D** (bookmark all tabs) → new folder. Then open the bookmark manager (Ctrl+Shift+O) → **⋮** → **Export bookmarks**.
+- **From your Android phone**: in Firefox for Android, open the tabs view → **⋮ → Share all tabs**, send it to yourself (e.g. email), and paste the text into Bulk Import.
+
+**Before starting** you see a summary: total links, how many are new, duplicates inside the list and videos already downloaded (both skipped automatically), links that aren't web pages, free space on the download drive, and every site with a tick box. Untick a site or single links if you like. Playlists, channels and profiles are listed separately and unticked; tick one to download all its videos. Then press **Start**.
+
+**While it runs**, you can close the Bulk Import window (or UniFetcher, or restart the PC): progress is saved and it carries on next time. It uses the normal download queue, so the 2-at-a-time limit, polite delays, pausing when the internet or drive disappears, and site sessions all apply. Importing the same list again later only picks up what's left.
+
+Each link ends up as one of:
+- **Downloaded**
+- **Skipped (duplicate)** — already downloaded, or the same video as another link
+- **Failed – will retry** — a temporary problem (connection, site busy); retried up to 3 times, waiting longer each time
+- **Unavailable** — removed, private, region-locked, DRM-protected, or over 4 GB on a FAT32 drive; not retried
+- **No video found** — e.g. an article or search page
+- **Needs my action** — a login or "verify you are human" check; open the site in the UniFetcher browser, then press **Retry failed**
+- **Failed** — still failing after the automatic retries
+
+**At the end** you get a report with counts per result and buttons **Retry failed**, **Export list of failed links** (a text file you can import again later) and **Copy report**. Earlier imports are listed on the Bulk Import start page.
 
 ## Using a VPN (PIA)
 

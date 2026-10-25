@@ -1,4 +1,4 @@
-﻿using Nickvision.Parabolic.Shared.Events;
+using Nickvision.Parabolic.Shared.Events;
 using Nickvision.Parabolic.Shared.Models;
 using System;
 using System.Collections.Generic;
@@ -14,6 +14,8 @@ public interface IDownloadService
     event EventHandler<DownloadEventArgs>? DownloadRetired;
     event EventHandler<DownloadEventArgs>? DownloadStartedFromQueue;
     event EventHandler<DownloadEventArgs>? DownloadStopped;
+    /// <summary>UniFetcher: final result of a download (after any automatic retries).</summary>
+    event EventHandler<DownloadFinishedEventArgs>? DownloadFinished;
 
     int DownloadingCount { get; }
     int QueuedCount { get; }
