@@ -7,7 +7,7 @@ A plain-language guide. Sections marked *(coming soon)* describe features still 
 2. [The "Windows protected your PC" warning](#the-windows-protected-your-pc-warning)
 3. [Update UniFetcher](#update-unifetcher)
    - [yt-dlp and ffmpeg updates](#yt-dlp-and-ffmpeg-updates)
-4. [The UniFetcher Firefox profile](#the-unifetcher-firefox-profile) *(coming soon)*
+4. [The UniFetcher Firefox profile](#the-unifetcher-firefox-profile)
 5. [Install the browser extension](#install-the-browser-extension)
 6. [Using a VPN (PIA)](#using-a-vpn-pia)
 7. [Downloading to an external hard drive](#downloading-to-an-external-hard-drive)
@@ -62,7 +62,25 @@ Settings → **User Interface** → **yt-dlp and ffmpeg**:
 
 ## The UniFetcher Firefox profile
 
-*(coming soon — stage 4)* UniFetcher will use its own separate Firefox profile called "UniFetcher" for website sessions, so nothing touches your everyday Firefox or Brave. This section will explain how to open it.
+Some sites only give working video links to a real browser (you'd see errors like "HTTP Error 403" or "410: Gone" while the video plays fine in a browser). UniFetcher fixes this by itself, using **its own separate Firefox profile called "UniFetcher"**. Your everyday Firefox or Brave is never touched: nothing UniFetcher does shows up in its history, cookies or logins.
+
+How it works:
+- The first time a site refuses a download, UniFetcher opens that site in a **UniFetcher** Firefox window, waits a few seconds for the site to set its cookies, and retries the download with those cookies. One visit per site, not per link.
+- If the cookies stop working later (for example after your VPN changed server), it refreshes them once and retries. It never loops.
+- While a download uses a saved session, its status shows 🍪 **Using a saved browser session (cookies)**.
+- **Logins and "verify you are human" checks are never automated.** The download is marked as needing your action, and a bar at the top of UniFetcher has an **Open in browser** button. Do the login or check in the UniFetcher window, then press **Retry** on the download. The login stays in that profile only.
+
+Needs Firefox installed (download it from mozilla.org). Without Firefox, downloads simply run without cookies.
+
+**Open the UniFetcher profile yourself** (e.g. to log in to a site in advance):
+- Settings → **Downloader** → **UniFetcher browser profile** → **Open UniFetcher browser**, or
+- In Firefox, type `about:profiles` in the address bar and click **Launch profile in new browser** under **UniFetcher**.
+
+The window it opens is the UniFetcher profile even though it looks like normal Firefox. Use your usual Firefox for everything else.
+
+**Forget a site / clear everything**: in the same Settings section, the list shows sites with saved sessions. The bin button forgets one site; **Forget all** forgets every site; **Clear UniFetcher browser data** wipes the profile's history, cookies, logins and cache (your everyday browser is unaffected).
+
+**Cookies from Browser** setting (same page): *UniFetcher profile (recommended)* is the default. The other choices (your main Firefox, Brave, Chrome, Edge) attach your normal browsing and logins to **every** download. Newer Brave/Chrome/Edge versions lock their cookies so yt-dlp often can't read them; if UniFetcher says it couldn't read them, switch back to the UniFetcher profile.
 
 ## Install the browser extension
 

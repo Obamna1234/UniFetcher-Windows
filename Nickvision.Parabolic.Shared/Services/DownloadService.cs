@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Nickvision.Desktop.Application;
 using Nickvision.Desktop.Globalization;
+using Nickvision.Desktop.Notifications;
 using Nickvision.Parabolic.Shared.Events;
 using Nickvision.Parabolic.Shared.Helpers;
 using Nickvision.Parabolic.Shared.Models;
@@ -23,6 +24,10 @@ public class DownloadService : IDisposable, IDownloadService
     private readonly IToolUpdateService _toolUpdateService;
     private readonly IDownloadRegistryService _downloadRegistryService;
     private readonly IQueueGuardService _queueGuard;
+    private readonly ISiteSessionService _sessions;
+    private readonly INotificationService _notificationService;
+    // Session retries per download (first session + one refresh at most)
+    private readonly Dictionary<string, int> _sessionRetries = new Dictionary<string, int>();
     private readonly object _queueLock = new object();
     // Downloads already retried once after a yt-dlp update (spec: retry once only)
     private readonly HashSet<string> _retriedAfterUpdate;
@@ -41,7 +46,7 @@ public class DownloadService : IDisposable, IDownloadService
     public int QueuedCount => _queued.Count;
     public int CompletedCount => _completed.Count;
 
-    public DownloadService(ILogger<DownloadService> logger, IConfigurationService configurationService, IHistoryService historyService, IRecoveryService recoveryService, ITranslationService translationService, IYtdlpExecutableService ytdlpService, IToolUpdateService toolUpdateService, IDownloadRegistryService downloadRegistryService, IQueueGuardService queueGuard)
+    public DownloadService(ILogger<DownloadService> logger, IConfigurationService configurationService, IHistoryService historyService, IRecoveryService recoveryService, ITranslationService translationService, IYtdlpExecutableService ytdlpService, IToolUpdateService toolUpdateService, IDownloadRegistryService downloadRegistryService, IQueueGuardService queueGuard, ISiteSessionService sessions, INotificationService notificationService)
     {
         _logger = logger;
         _configurationService = configurationService;
@@ -52,6 +57,8 @@ public class DownloadService : IDisposable, IDownloadService
         _toolUpdateService = toolUpdateService;
         _downloadRegistryService = downloadRegistryService;
         _queueGuard = queueGuard;
+        _sessions = sessions;
+        _notificationService = notificationService;
         _queueGuard.Resumed += (_, _) => StartNextQueued();
         _retriedAfterUpdate = new HashSet<string>();
         _downloading = new Dictionary<int, Download>();
@@ -102,7 +109,7 @@ public class DownloadService : IDisposable, IDownloadService
             download.RefreshFilePath();
             _downloading.Add(download.Id, download);
             DownloadAdded?.Invoke(this, new DownloadAddedEventArgs(download.Id, download.FilePath, download.Options.Url, DownloadStatus.Running));
-            download.Start();
+            await BeginAsync(download);
         }
         else
         {
@@ -152,7 +159,7 @@ public class DownloadService : IDisposable, IDownloadService
         await _historyService.AddAsync(historicDownloads);
         foreach (var download in downloadsToStart)
         {
-            download.Start();
+            await BeginAsync(download);
         }
     }
 
@@ -381,6 +388,29 @@ public class DownloadService : IDisposable, IDownloadService
                 await RequeueAsync(download);
                 return;
             }
+            // UniFetcher: 403/410 -> get (or refresh once) a session in the UniFetcher Firefox profile and retry; logins/CAPTCHAs -> needs my action
+            var usedCookies = !string.IsNullOrEmpty(download.Options.CookieProfile);
+            var outcome = await _sessions.HandleFailureAsync(download.Options.Url, download.Log, usedCookies);
+            var sessionKey = download.Options.Url.ToString() + "|" + download.FilePath;
+            _sessionRetries.TryGetValue(sessionKey, out var sessionTries);
+            if (outcome.Decision == SessionDecision.RetryWithCookies && sessionTries < 2)
+            {
+                _sessionRetries[sessionKey] = sessionTries + 1;
+                DownloadCompleted?.Invoke(this, e);
+                _logger.LogInformation($"Retrying download ({e.Id}) with a site session.");
+                await RetryAsync(e.Id);
+                StartNextQueued();
+                return;
+            }
+            if (outcome.Decision == SessionDecision.NeedsAction)
+            {
+                download.AddNote(outcome.Message);
+                _notificationService.Send(new AppNotification(outcome.Message, NotificationSeverity.Warning)
+                {
+                    Action = "needs-action",
+                    ActionParam = download.Options.Url.ToString()
+                });
+            }
             var retryKey = download.Options.Url.ToString() + "|" + download.FilePath;
             if (ToolUpdateService.IsExtractorError(download.Log) && _retriedAfterUpdate.Add(retryKey))
             {
@@ -398,6 +428,7 @@ public class DownloadService : IDisposable, IDownloadService
         else if (e.Status == DownloadStatus.Success)
         {
             _logger.LogDebug($"Download completed ({e.Id}): {download.Log}");
+            await _sessions.MarkSuccessAsync(download.Options.Url, !string.IsNullOrEmpty(download.Options.CookieProfile));
             // UniFetcher: remember it, so the same video isn't downloaded twice by accident
             try
             {
@@ -438,9 +469,24 @@ public class DownloadService : IDisposable, IDownloadService
                 _queued.Remove(firstDownload.Id);
                 _logger.LogDebug($"Starting download from queue ({firstDownload.Id}).");
                 DownloadStartedFromQueue?.Invoke(this, new DownloadEventArgs(firstDownload.Id));
-                firstDownload.Start();
+                _ = BeginAsync(firstDownload);
             }
         }
+    }
+
+    /// <summary>Starts a download, adding the UniFetcher profile's cookies first if its site needs a session.</summary>
+    private async Task BeginAsync(Download download)
+    {
+        try
+        {
+            download.Options.CookieProfile = await _sessions.GetCookieProfileAsync(download.Options.Url);
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning($"Could not prepare cookies for download ({download.Id}): {e.Message}");
+            download.Options.CookieProfile = null;
+        }
+        download.Start();
     }
 
     /// <summary>Puts an interrupted download back in the queue as a fresh item (partial files are kept, so yt-dlp continues where it stopped).</summary>

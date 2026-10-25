@@ -10,5 +10,6 @@ namespace Nickvision.Parabolic.Shared.Services;
 public interface IYtdlpExecutableService : IDependencyExecutableService
 {
     IReadOnlyList<string> GetDiscoveryProcessArguments(Uri url, Credential? credential);
+    IReadOnlyList<string> GetDiscoveryProcessArguments(Uri url, Credential? credential, string? cookieProfile);
     Process GetDownloadProcess(DownloadOptions downloadOptions);
 }

@@ -344,6 +344,46 @@
                                 </ComboBox>
                             </community:SettingsCard>
 
+                            <!-- UniFetcher: the separate "UniFetcher" Firefox profile and per-site sessions -->
+                            <community:SettingsExpander x:Name="RowProfile" IsExpanded="False">
+                                <community:SettingsExpander.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE774;"/>
+                                </community:SettingsExpander.HeaderIcon>
+
+                                <Button x:Name="BtnOpenProfile" Click="OpenProfile"/>
+
+                                <community:SettingsExpander.Items>
+                                    <community:SettingsCard x:Name="RowSessionsHeader">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Button x:Name="BtnForgetAllSites" Click="ForgetAllSites"/>
+                                            <Button x:Name="BtnClearProfileData" Click="ClearProfileData"/>
+                                        </StackPanel>
+                                    </community:SettingsCard>
+
+                                    <community:SettingsCard x:Name="RowSessionsList" HorizontalContentAlignment="Stretch" ContentAlignment="Vertical">
+                                        <ListView x:Name="ListSessions" SelectionMode="None">
+                                            <ListView.ItemTemplate>
+                                                <DataTemplate x:DataType="parabolic:BindableSiteSession">
+                                                    <Grid ColumnSpacing="12" Padding="0,4,0,4">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                            <TextBlock Text="{x:Bind Site}"/>
+                                                            <TextBlock Text="{x:Bind Description}" Opacity="0.7" FontSize="12"/>
+                                                        </StackPanel>
+                                                        <Button Grid.Column="1" Tag="{x:Bind Site}" Click="ForgetSite">
+                                                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE74D;" FontSize="16"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListView.ItemTemplate>
+                                        </ListView>
+                                    </community:SettingsCard>
+                                </community:SettingsExpander.Items>
+                            </community:SettingsExpander>
+
                             <TextBlock x:Name="LblAria" Visibility="Collapsed" Margin="0,12,0,0" Style="{StaticResource NavigationViewItemHeaderTextStyle}"/>
 
                             <community:SettingsExpander x:Name="RowUseAria" Visibility="Collapsed">

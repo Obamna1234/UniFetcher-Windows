@@ -66,6 +66,16 @@ public partial class Download : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>UniFetcher: adds a plain-language note to the download's log (e.g. what you need to do).</summary>
+    public void AddNote(string note)
+    {
+        if (!string.IsNullOrEmpty(note))
+        {
+            _logBuilder.AppendLine();
+            _logBuilder.AppendLine("UniFetcher: " + note);
+        }
+    }
+
     /// <summary>UniFetcher: re-reads the target path (the drive may have come back under a different letter).</summary>
     public void RefreshFilePath()
     {
@@ -121,7 +131,15 @@ public partial class Download : IDisposable
         _process.SetAsParentProcess();
         _process.BeginOutputReadLine();
         _process.BeginErrorReadLine();
-        ProgressChanged?.Invoke(this, new DownloadProgressChangedEventArgs(Id, (_translationService?._("Starting download...") ?? "Starting download...").AsMemory(), double.NaN, 0.0, 0));
+        var startText = _translationService?._("Starting download...") ?? "Starting download...";
+        if (!string.IsNullOrEmpty(Options.CookieProfile) || _configurationService.CookiesBrowser != Browser.None)
+        {
+            // UniFetcher: show that a browser session (cookies) is attached to this download
+            var cookieText = "🍪 " + (_translationService?._("Using a saved browser session (cookies)") ?? "Using a saved browser session (cookies)");
+            _logBuilder.AppendLine(cookieText);
+            startText = cookieText + " · " + startText;
+        }
+        ProgressChanged?.Invoke(this, new DownloadProgressChangedEventArgs(Id, startText.AsMemory(), double.NaN, 0.0, 0));
     }
 
     public void Stop()

@@ -3,6 +3,7 @@ using Nickvision.Desktop.Keyring;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json.Serialization;
 
 namespace Nickvision.Parabolic.Shared.Models;
 
@@ -29,6 +30,9 @@ public class DownloadOptions
     public string VideoKey { get; set; } = string.Empty;
     /// <summary>UniFetcher: volume serial number of the download drive, so it's recognised under a different drive letter.</summary>
     public string DriveId { get; set; } = string.Empty;
+    /// <summary>UniFetcher: cookie snapshot folder of the UniFetcher Firefox profile for this download (set just before it starts; never saved).</summary>
+    [JsonIgnore]
+    public string? CookieProfile { get; set; }
 
     public DownloadOptions(Uri url)
     {

@@ -248,6 +248,18 @@ public sealed partial class MainWindow : Window
             _notificationClickHandler = YtdlpUpdate;
             BtnInfoBar.Click += _notificationClickHandler;
         }
+        else if (e.Notification.Action == "needs-action" && !string.IsNullOrEmpty(e.Notification.ActionParam))
+        {
+            // UniFetcher: logins / human checks happen in the UniFetcher Firefox profile
+            BtnInfoBar.Content = _translationService._("Open in browser");
+            var url = e.Notification.ActionParam;
+            _notificationClickHandler = async (_, _) =>
+            {
+                InfoBar.IsOpen = false;
+                await _controller.OpenInProfileAsync(url);
+            };
+            BtnInfoBar.Click += _notificationClickHandler;
+        }
         else if (e.Notification.Action == "update-deno")
         {
             BtnInfoBar.Content = _translationService._("Update");

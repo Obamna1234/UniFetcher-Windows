@@ -31,12 +31,13 @@ public class MainWindowController
     private readonly ITranslationService _translationService;
     private readonly IUpdaterService _updaterService;
     private readonly IToolUpdateService _toolUpdateService;
+    private readonly ISiteSessionService _sessions;
     private readonly IYtdlpExecutableService _ytdlpExecutableService;
     private AppVersion _latestAppVersion;
     private AppVersion _latestYtdlpVersion;
     private AppVersion _latestDenoVersion;
 
-    public MainWindowController(ILogger<MainWindowController> logger, AppInfo appInfo, IArgumentsService argumentsService, IConfigurationService configurationService, IDatabaseService databaseService, IDenoExecutableService denoExecutableService, IDownloadService downloadService, INotificationService notificationService, IPowerService powerService, IRecoveryService recoveryService, ITranslationService translationService, IUpdaterService updaterService, IToolUpdateService toolUpdateService, IYtdlpExecutableService ytdlpExecutableService)
+    public MainWindowController(ILogger<MainWindowController> logger, AppInfo appInfo, IArgumentsService argumentsService, IConfigurationService configurationService, IDatabaseService databaseService, IDenoExecutableService denoExecutableService, IDownloadService downloadService, INotificationService notificationService, IPowerService powerService, IRecoveryService recoveryService, ITranslationService translationService, IUpdaterService updaterService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IYtdlpExecutableService ytdlpExecutableService)
     {
         _logger = logger;
         _appInfo = appInfo;
@@ -51,6 +52,7 @@ public class MainWindowController
         _translationService = translationService;
         _updaterService = updaterService;
         _toolUpdateService = toolUpdateService;
+        _sessions = sessions;
         _toolUpdateService.UpdateFound += ToolUpdateService_UpdateFound;
         _ytdlpExecutableService = ytdlpExecutableService;
         _latestAppVersion = appInfo.Version!;
@@ -394,6 +396,15 @@ public class MainWindowController
             _notificationService.Send(new AppNotification(_translationService._("yt-dlp and ffmpeg are up to date"), NotificationSeverity.Success));
         }
         // "Installed" is announced by ToolUpdateService_UpdateFound
+    }
+
+    /// <summary>UniFetcher: opens a link in the UniFetcher Firefox profile (for logins / "verify you are human" checks).</summary>
+    public async Task OpenInProfileAsync(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !await _sessions.OpenInProfileAsync(uri))
+        {
+            _notificationService.Send(new AppNotification(_translationService._("Couldn't open the UniFetcher Firefox profile. Is Firefox installed?"), NotificationSeverity.Error));
+        }
     }
 
     private void ToolUpdateService_UpdateFound(object? sender, ToolUpdateResult e)

@@ -24,13 +24,14 @@ public class DiscoveryService : IDiscoveryService
     private readonly ITranslationService _translationService;
     private readonly IYtdlpExecutableService _ytdlpExecutableService;
     private readonly IToolUpdateService _toolUpdateService;
+    private readonly ISiteSessionService _sessions;
 
     static DiscoveryService()
     {
         BatchFileDelimiter = '|';
     }
 
-    public DiscoveryService(ILogger<DiscoveryService> logger, IConfigurationService configurationService, IThumbnailService thumbnailService, ITranslationService translationService, IYtdlpExecutableService ytdlpExecutableService, IToolUpdateService toolUpdateService)
+    public DiscoveryService(ILogger<DiscoveryService> logger, IConfigurationService configurationService, IThumbnailService thumbnailService, ITranslationService translationService, IYtdlpExecutableService ytdlpExecutableService, IToolUpdateService toolUpdateService, ISiteSessionService sessions)
     {
         _logger = logger;
         _configurationService = configurationService;
@@ -38,6 +39,7 @@ public class DiscoveryService : IDiscoveryService
         _translationService = translationService;
         _ytdlpExecutableService = ytdlpExecutableService;
         _toolUpdateService = toolUpdateService;
+        _sessions = sessions;
     }
 
     public async Task<DiscoveryResult> GetForBatchFileAsync(string path, Credential? credential = null, CancellationToken cancellationToken = default)
@@ -68,14 +70,30 @@ public class DiscoveryService : IDiscoveryService
         _logger.LogInformation($"Discovering media for {url}...");
         // UniFetcher: make sure yt-dlp was checked for updates in the last 6 hours before fetching
         await _toolUpdateService.EnsureRecentCheckAsync(cancellationToken);
-        var processResult = await _ytdlpExecutableService.ExecuteAsync(_ytdlpExecutableService.GetDiscoveryProcessArguments(url, credential), cancellationToken);
+        // UniFetcher: sites that need a session get the UniFetcher Firefox profile's cookies
+        var cookieProfile = await _sessions.GetCookieProfileAsync(url);
+        var processResult = await _ytdlpExecutableService.ExecuteAsync(_ytdlpExecutableService.GetDiscoveryProcessArguments(url, credential, cookieProfile), cancellationToken);
         if (processResult.ExitCode != 0 && (string.IsNullOrEmpty(processResult.Output) || processResult.Output[0] != '{') && ToolUpdateService.IsExtractorError(processResult.Error))
         {
             // UniFetcher: extractor / "unsupported" errors are usually fixed by a newer yt-dlp: update and try once more
             if (await _toolUpdateService.TryUpdateAfterExtractorErrorAsync(cancellationToken))
             {
                 _logger.LogInformation($"Retrying discovery for {url} with the updated yt-dlp...");
-                processResult = await _ytdlpExecutableService.ExecuteAsync(_ytdlpExecutableService.GetDiscoveryProcessArguments(url, credential), cancellationToken);
+                processResult = await _ytdlpExecutableService.ExecuteAsync(_ytdlpExecutableService.GetDiscoveryProcessArguments(url, credential, cookieProfile), cancellationToken);
+            }
+        }
+        if (processResult.ExitCode != 0 && (string.IsNullOrEmpty(processResult.Output) || processResult.Output[0] != '{'))
+        {
+            // UniFetcher: 403/410 -> get a session once and retry; login / human check -> tell the user what to do
+            var outcome = await _sessions.HandleFailureAsync(url, processResult.Error, !string.IsNullOrEmpty(cookieProfile), cancellationToken);
+            if (outcome.Decision == SessionDecision.RetryWithCookies)
+            {
+                cookieProfile = await _sessions.GetCookieProfileAsync(url);
+                processResult = await _ytdlpExecutableService.ExecuteAsync(_ytdlpExecutableService.GetDiscoveryProcessArguments(url, credential, cookieProfile), cancellationToken);
+            }
+            else if (outcome.Decision == SessionDecision.NeedsAction)
+            {
+                throw new YtdlpException($"{outcome.Message}\n\n{processResult.Error}");
             }
         }
         if (processResult.ExitCode != 0 && (string.IsNullOrEmpty(processResult.Output) || processResult.Output[0] != '{'))

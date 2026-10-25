@@ -68,7 +68,9 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
     /// <summary>UniFetcher: yt-dlp is chosen by the tool update service (installed update, or the bundled copy).</summary>
     public override string ExecutablePath => _toolUpdateService.YtdlpPath;
 
-    public IReadOnlyList<string> GetDiscoveryProcessArguments(Uri url, Credential? credential)
+    public IReadOnlyList<string> GetDiscoveryProcessArguments(Uri url, Credential? credential) => GetDiscoveryProcessArguments(url, credential, null);
+
+    public IReadOnlyList<string> GetDiscoveryProcessArguments(Uri url, Credential? credential, string? cookieProfile)
     {
         var pluginsDir = Path.Combine(Desktop.System.Environment.ExecutingDirectory, "plugins");
         var arguments = new List<string>(23)
@@ -119,6 +121,11 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
         {
             arguments.Add("--cookies-from-browser");
             arguments.Add(CookiesFromBrowserArgument);
+        }
+        else if (!string.IsNullOrEmpty(cookieProfile))
+        {
+            arguments.Add("--cookies-from-browser");
+            arguments.Add($"firefox:{cookieProfile}");
         }
         else if (File.Exists(_configurationService.CookiesPath))
         {
@@ -304,6 +311,12 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
         {
             arguments.Add("--cookies-from-browser");
             arguments.Add(CookiesFromBrowserArgument);
+        }
+        else if (!string.IsNullOrEmpty(downloadOptions.CookieProfile))
+        {
+            // UniFetcher: this site needs a session; use the UniFetcher Firefox profile's cookies only
+            arguments.Add("--cookies-from-browser");
+            arguments.Add($"firefox:{downloadOptions.CookieProfile}");
         }
         else if (File.Exists(_configurationService.CookiesPath))
         {

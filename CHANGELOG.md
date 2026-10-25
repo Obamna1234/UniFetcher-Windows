@@ -1,6 +1,14 @@
 # Changelog
 
 ## Unreleased
+### Browser sessions and VPN (stage 4)
+- New separate "UniFetcher" Firefox profile (created automatically, listed in about:profiles). Your everyday browser is never touched.
+- Downloads and fetches refused with 403/410 get a session from that profile (one visit per site) and retry; cookies are refreshed once if they stop working; never loops.
+- Logins and CAPTCHAs are never automated: "needs your action" with an Open in browser button, then Retry.
+- Repeated refusals after a refresh suggest the site may be blocking your VPN.
+- Settings: cookie source (UniFetcher profile by default; main Firefox / Brave / Chrome / Edge with warnings), open the profile, saved sites with Forget / Forget all, Clear UniFetcher browser data.
+- 🍪 indicator when a download uses a saved session. Cookies are copied privately for yt-dlp and never logged or exported.
+
 ### Queue, drives and quality (stage 3)
 - New quality choice "Smart: best up to 1080p" (default): highest up to 1080p, prefers 720p or better, takes the lowest version above 1080p if that's all there is, merges into MP4 (MKV if MP4 can't hold the streams), never re-encodes.
 - 2 downloads at once by default (maximum 5); 2–5 second polite delays between requests and items.

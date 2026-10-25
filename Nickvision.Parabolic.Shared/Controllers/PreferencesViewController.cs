@@ -18,6 +18,8 @@ public class PreferencesViewController
     private readonly IConfigurationService _configurationService;
     private readonly ITranslationService _translationService;
     private readonly IToolUpdateService _toolUpdateService;
+    private readonly ISiteSessionService _sessions;
+    private readonly IFirefoxProfileService _profile;
 
     public IReadOnlyList<SelectionItem<AudioCodec>> AudioCodecs { get; }
     public IReadOnlyList<SelectionItem<string>> AvailableTranslationLanguages { get; }
@@ -33,11 +35,13 @@ public class PreferencesViewController
     public IReadOnlyList<SelectionItem<ToolUpdateMode>> ToolUpdateModes { get; }
     public IReadOnlyList<SelectionItem<YtdlpChannel>> YtdlpChannels { get; }
 
-    public PreferencesViewController(IConfigurationService configurationService, ITranslationService translationService, IToolUpdateService toolUpdateService)
+    public PreferencesViewController(IConfigurationService configurationService, ITranslationService translationService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IFirefoxProfileService profile)
     {
         _configurationService = configurationService;
         _translationService = translationService;
         _toolUpdateService = toolUpdateService;
+        _sessions = sessions;
+        _profile = profile;
         var mode = _configurationService.ToolUpdateMode;
         ToolUpdateModes = new List<SelectionItem<ToolUpdateMode>>()
         {
@@ -74,12 +78,19 @@ public class PreferencesViewController
         {
             (AvailableTranslationLanguages as IList)!.Add(new SelectionItem<string>(language, language, _configurationService.TranslationLanguage == language));
         }
-        Browsers = new List<SelectionItem<Browser>>(OperatingSystem.IsWindows() ? 2 : 9)
+        Browsers = new List<SelectionItem<Browser>>(OperatingSystem.IsWindows() ? 5 : 9)
         {
-            new SelectionItem<Browser>(Browser.None, _translationService._("None"), _configurationService.CookiesBrowser == Browser.None),
-            new SelectionItem<Browser>(Browser.Firefox, _translationService._("Firefox"), _configurationService.CookiesBrowser == Browser.Firefox)
+            // UniFetcher: "None" means the UniFetcher Firefox profile, used only for sites that need a session
+            new SelectionItem<Browser>(Browser.None, _translationService._("UniFetcher profile (recommended)"), _configurationService.CookiesBrowser == Browser.None),
+            new SelectionItem<Browser>(Browser.Firefox, _translationService._("My main Firefox profile"), _configurationService.CookiesBrowser == Browser.Firefox)
         };
-        if (!OperatingSystem.IsWindows())
+        if (OperatingSystem.IsWindows())
+        {
+            (Browsers as IList)!.Add(new SelectionItem<Browser>(Browser.Brave, _translationService._("Brave"), _configurationService.CookiesBrowser == Browser.Brave));
+            (Browsers as IList)!.Add(new SelectionItem<Browser>(Browser.Chrome, _translationService._("Chrome"), _configurationService.CookiesBrowser == Browser.Chrome));
+            (Browsers as IList)!.Add(new SelectionItem<Browser>(Browser.Edge, _translationService._("Edge"), _configurationService.CookiesBrowser == Browser.Edge));
+        }
+        else
         {
             (Browsers as IList)!.Add(new SelectionItem<Browser>(Browser.Brave, _translationService._("Brave"), _configurationService.CookiesBrowser == Browser.Brave));
             (Browsers as IList)!.Add(new SelectionItem<Browser>(Browser.Chrome, _translationService._("Chrome"), _configurationService.CookiesBrowser == Browser.Chrome));
@@ -465,4 +476,26 @@ public class PreferencesViewController
     }
 
     public async Task<string> RollBackToolsAsync() => await _toolUpdateService.RollBackAsync() ? _translationService._("Switched back to the previous version") : _translationService._("There is no previous version to go back to");
+
+    // ---- UniFetcher: browser sessions (UniFetcher Firefox profile) ----
+    public bool IsFirefoxInstalled => _profile.IsFirefoxInstalled;
+
+    public string ProfileDirectory => _profile.ProfileDirectory;
+
+    public string CookieSourceDescription(Browser browser) => browser switch
+    {
+        Browser.None => _translationService._("Recommended. Sites that need a session get one in UniFetcher's own Firefox profile. Nothing touches your everyday browser."),
+        Browser.Firefox => _translationService._("Warning: every download uses the cookies of your everyday Firefox profile, so your normal browsing and logins are attached to downloads."),
+        _ => _translationService._("Warning: every download uses your everyday browser's cookies. Newer Brave/Chrome/Edge versions often lock their cookies, so this may not work; if so, switch back to the UniFetcher profile.")
+    };
+
+    public async Task<IReadOnlyList<SiteSession>> GetSessionsAsync() => await _sessions.GetSessionsAsync();
+
+    public async Task ForgetSiteAsync(string site) => await _sessions.ForgetAsync(site);
+
+    public async Task ForgetAllSitesAsync() => await _sessions.ForgetAllAsync();
+
+    public async Task<bool> ClearProfileDataAsync() => await _profile.ClearDataAsync();
+
+    public async Task<bool> OpenProfileAsync() => await _profile.OpenWindowAsync();
 }

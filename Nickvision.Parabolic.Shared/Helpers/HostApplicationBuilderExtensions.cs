@@ -41,6 +41,8 @@ public static class HostApplicationBuilderExtensions
             builder.Services.AddSingleton<IThumbnailService, ThumbnailService>();
             builder.Services.AddSingleton<IToolUpdateService, ToolUpdateService>();
             builder.Services.AddSingleton<IQueueGuardService, QueueGuardService>();
+            builder.Services.AddSingleton<IFirefoxProfileService, FirefoxProfileService>();
+            builder.Services.AddSingleton<ISiteSessionService, SiteSessionService>();
             builder.Services.AddSingleton<IYtdlpExecutableService, YtdlpExecutableService>();
             builder.Services.AddTransient<AddDownloadDialogController>();
             builder.Services.AddTransient<HistoryViewController>();

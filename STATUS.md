@@ -10,8 +10,8 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 | 1 | Fork setup, rename, credits, remove external links, workflows, `.gitignore`, `HOW_TO.md`, `STATUS.md` | Done (build passing) |
 | 2 | yt-dlp and ffmpeg updating, auto-retry | Done (build passing) |
 | 3 | Queue improvements, pause on connection loss, external drive, duplicate detection, quality preset, batch downloads | Done — waiting for green build |
-| 4 | Dedicated "UniFetcher" Firefox profile sessions, VPN handling | Next |
-| 5 | Browser extension (native messaging, video detection, send all tabs, Firefox signing) | To do |
+| 4 | Dedicated "UniFetcher" Firefox profile sessions, VPN handling | Done — waiting for green build |
+| 5 | Browser extension (native messaging, video detection, send all tabs, Firefox signing) | Next |
 | 6 | Bulk import (paste, file, drag-and-drop, send all tabs, end report) | To do |
 | 7 | Organising downloads, incognito, discreet notifications, clear history | To do |
 
@@ -24,6 +24,8 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 - Queue pausing (internet / drive missing / drive full) lives in `QueueGuardService`; interrupted downloads are put back in the queue as fresh items, keeping partial files so yt-dlp resumes.
 - Duplicate detection uses UniFetcher's own `unifetcher_downloaded` table (`DownloadRegistryService`), filled when a download *succeeds* (Parabolic's history is filled when a download is *added*).
 - Parabolic's "Overwrite existing files" setting is forced off and hidden; aria2c settings are hidden.
+- Sessions: `FirefoxProfileService` (profile in `%APPDATA%\UniFetcher\FirefoxProfile`, registered as "UniFetcher" in profiles.ini) and `SiteSessionService` (table `unifetcher_sessions`). yt-dlp reads a private, checkpointed copy of the profile's cookies.sqlite via `--cookies-from-browser firefox:<copy>`, so the UniFetcher window doesn't need closing; it's closed only if the file can't be copied. Firefox session-only cookies aren't stored on disk, so they can't be used.
+- Parabolic's "Cookies from Browser" setting: `None` now means "UniFetcher profile".
 - Test builds are versioned `0.0.0-dev.<run>`; releases take their version from the tag.
 
 ## Waiting on you

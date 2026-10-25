@@ -110,6 +110,14 @@ public sealed partial class SettingsPage : Page
         ToolTipService.SetToolTip(BtnClearCookiesFile, _translationService._("Clear Cookies File"));
         ToolTipService.SetToolTip(BtnSelectCookiesFile, _translationService._("Select Cookies File"));
         RowCookiesBrowser.Header = _translationService._("Cookies from Browser");
+        RowProfile.Header = _translationService._("UniFetcher browser profile");
+        RowProfile.Description = _controller.IsFirefoxInstalled ? _translationService._("A separate Firefox profile only UniFetcher uses, for sites that need a session or a login") : _translationService._("Needs Firefox. Without it, downloads run without cookies.");
+        BtnOpenProfile.Content = _translationService._("Open UniFetcher browser");
+        BtnOpenProfile.IsEnabled = _controller.IsFirefoxInstalled;
+        RowSessionsHeader.Header = _translationService._("Sites with saved sessions");
+        BtnForgetAllSites.Content = _translationService._("Forget all");
+        BtnClearProfileData.Content = _translationService._("Clear UniFetcher browser data");
+        RowSessionsList.Header = string.Empty;
         CmbCookiesBrowser.ItemsSource = _controller.Browsers.ToBindableSelectonItems();
         LblAria.Text = _translationService._("aria2c");
         RowUseAria.Header = _translationService._("Use aria2c");
@@ -195,6 +203,8 @@ public sealed partial class SettingsPage : Page
         TxtProxyUrl.Text = _controller.ProxyUrl;
         LblCookiesFile.Text = !File.Exists(_controller.CookiesPath) ? _translationService._("No file selected") : _controller.CookiesPath;
         CmbCookiesBrowser.SelectSelectionItem();
+        UpdateCookieSourceDescription();
+        _ = RefreshSessionsAsync();
         TglUseAria.IsOn = _controller.UseAria;
         NumMaxConnectionsPerServer.Value = _controller.AriaMaxConnectionsPerServer;
         NumMinimumSplitSize.Value = _controller.AriaMinSplitSize;
@@ -274,6 +284,59 @@ public sealed partial class SettingsPage : Page
         var message = await _controller.RollBackToolsAsync();
         await RefreshToolStatusAsync();
         LblToolStatus.Text = message + "\n" + LblToolStatus.Text;
+    }
+
+    private void UpdateCookieSourceDescription()
+    {
+        if (CmbCookiesBrowser.SelectedItem is BindableSelectionItem item && item.ToSelectionItem<Browser>() is { } browser)
+        {
+            RowCookiesBrowser.Description = _controller.CookieSourceDescription(browser.Value);
+        }
+    }
+
+    private async Task RefreshSessionsAsync()
+    {
+        var sessions = await _controller.GetSessionsAsync();
+        ListSessions.ItemsSource = sessions.Select(x => new BindableSiteSession(x.Site, _translationService._("Last visited {0}", x.LastVisit.ToString("g")))).ToList();
+        RowSessionsList.Visibility = sessions.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        BtnForgetAllSites.IsEnabled = sessions.Count > 0;
+    }
+
+    private async void OpenProfile(object? sender, RoutedEventArgs e) => await _controller.OpenProfileAsync();
+
+    private async void ForgetSite(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Button)?.Tag is string site)
+        {
+            await _controller.ForgetSiteAsync(site);
+            await RefreshSessionsAsync();
+        }
+    }
+
+    private async void ForgetAllSites(object? sender, RoutedEventArgs e)
+    {
+        await _controller.ForgetAllSitesAsync();
+        await RefreshSessionsAsync();
+    }
+
+    private async void ClearProfileData(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = _translationService._("Clear UniFetcher browser data?"),
+            Content = _translationService._("This wipes the history, cookies, logins and cache of UniFetcher's own Firefox profile, and closes its window if it's open. Your everyday browser is not affected."),
+            PrimaryButtonText = _translationService._("Clear"),
+            CloseButtonText = _translationService._("Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+        await _controller.ForgetAllSitesAsync();
+        await _controller.ClearProfileDataAsync();
+        await RefreshSessionsAsync();
     }
 
     private async void ClearCookiesFile(object? sender, RoutedEventArgs e)
@@ -360,7 +423,14 @@ public sealed partial class SettingsPage : Page
         ViewStack.SelectedIndex = index == -1 ? 0 : index;
     }
 
-    private async void Cmb_SelectionChanged(object? sender, SelectionChangedEventArgs e) => await ApplyChangesAsync();
+    private async void Cmb_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (sender == CmbCookiesBrowser)
+        {
+            UpdateCookieSourceDescription();
+        }
+        await ApplyChangesAsync();
+    }
 
     private async void Num_ValueChanged(NumberBox sender, NumberBoxValueChangedEventArgs args) => await ApplyChangesAsync();
 
