@@ -9,11 +9,11 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 |---|-------|-------|
 | 1 | Fork setup, rename, credits, remove external links, workflows, `.gitignore`, `HOW_TO.md`, `STATUS.md` | Done (build passing) |
 | 2 | yt-dlp and ffmpeg updating, auto-retry | Done (build passing) |
-| 3 | Queue improvements, pause on connection loss, external drive, duplicate detection, quality preset, batch downloads | Done — waiting for green build |
+| 3 | Queue improvements, pause on connection loss, external drive, duplicate detection, quality preset, batch downloads | Done (build passing) |
 | 4 | Dedicated "UniFetcher" Firefox profile sessions, VPN handling | Done (build passing) |
-| 5 | Browser extension (native messaging, video detection, send all tabs, Firefox signing) | Done — waiting for green build |
-| 6 | Bulk import (paste, file, drag-and-drop, send all tabs, end report) | Done — waiting for green build |
-| 7 | Organising downloads, incognito, discreet notifications, clear history | Done — waiting for green build |
+| 5 | Browser extension (native messaging, video detection, send all tabs, Firefox signing) | Done (build passing) |
+| 6 | Bulk import (paste, file, drag-and-drop, send all tabs, end report) | Done (build passing) |
+| 7 | Organising downloads, incognito, discreet notifications, clear history | Done (build passing) |
 
 ## Decisions so far
 - Bundled programs come only from official GitHub releases: yt-dlp (yt-dlp/yt-dlp), ffmpeg (yt-dlp/FFmpeg-Builds), deno (denoland/deno, needed by yt-dlp for YouTube).
