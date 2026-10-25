@@ -40,6 +40,9 @@ public interface IBulkImportService
     Task<string> GetFailedLinksAsync(string jobId);
 
     string StateLabel(BulkItemState state);
+
+    /// <summary>Forgets imports that have nothing left to do (unfinished ones are kept so they can carry on).</summary>
+    Task ClearFinishedAsync();
 }
 
 /// <summary>
@@ -315,6 +318,7 @@ public partial class BulkImportService : BackgroundService, IBulkImportService
         }
         if (string.IsNullOrEmpty(item.SaveFilename))
         {
+            item.SaveFolder = FileNameHelper.SiteFolder(item.SaveFolder, single.Url, _configurationService.SubfolderPerSite);
             // Keep the name for later attempts, so an interrupted download continues instead of starting over under a new name
             item.SaveFilename = FileNameHelper.UniqueName(item.SaveFolder, single.Title.SanitizeForFilename(_configurationService.LimitCharacters));
         }
@@ -335,7 +339,7 @@ public partial class BulkImportService : BackgroundService, IBulkImportService
         item.Note = string.Empty;
         await SaveItemAsync(item);
         JobChanged?.Invoke(this, item.JobId);
-        await _downloadService.AddAsync(options, false);
+        await _downloadService.AddAsync(options, _configurationService.Incognito);
     }
 
     private async void DownloadService_DownloadFinished(object? sender, DownloadFinishedEventArgs e)
@@ -525,6 +529,27 @@ public partial class BulkImportService : BackgroundService, IBulkImportService
         BulkItemState.Stopped => _translationService._("Stopped"),
         _ => state.ToString()
     };
+
+    public async Task ClearFinishedAsync()
+    {
+        foreach (var job in await GetJobsAsync())
+        {
+            var items = await GetItemsAsync(job.Id);
+            if (items.All(x => x.IsFinal))
+            {
+                await _dbLock.WaitAsync();
+                try
+                {
+                    await _databaseService.DeleteFromTableAsync(ItemsTable, "job", job.Id);
+                    await _databaseService.DeleteFromTableAsync(JobsTable, "id", job.Id);
+                }
+                finally
+                {
+                    _dbLock.Release();
+                }
+            }
+        }
+    }
 
     // ---------------- Storage ----------------
 

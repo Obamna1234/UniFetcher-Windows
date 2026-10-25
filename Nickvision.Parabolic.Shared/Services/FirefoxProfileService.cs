@@ -57,6 +57,9 @@ public interface IFirefoxProfileService
     /// <summary>Forces a fresh cookie copy next time (after a site visit).</summary>
     void InvalidateSnapshot();
 
+    /// <summary>Deletes UniFetcher's private copy of the profile's cookies.</summary>
+    void ClearCookieSnapshot();
+
     /// <summary>Adds the signed Send to UniFetcher extension (shipped with UniFetcher) to the UniFetcher profile, if present.</summary>
     Task InstallExtensionAsync();
 }
@@ -451,6 +454,22 @@ public class FirefoxProfileService : IFirefoxProfileService
             process.Dispose();
         }
         return result;
+    }
+
+    public void ClearCookieSnapshot()
+    {
+        InvalidateSnapshot();
+        try
+        {
+            if (Directory.Exists(_snapshotRoot))
+            {
+                Directory.Delete(_snapshotRoot, true);
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning($"Could not delete the cookie copy: {e.Message}");
+        }
     }
 
     public void InvalidateSnapshot()

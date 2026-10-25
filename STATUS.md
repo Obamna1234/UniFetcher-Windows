@@ -13,7 +13,7 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 | 4 | Dedicated "UniFetcher" Firefox profile sessions, VPN handling | Done (build passing) |
 | 5 | Browser extension (native messaging, video detection, send all tabs, Firefox signing) | Done — waiting for green build |
 | 6 | Bulk import (paste, file, drag-and-drop, send all tabs, end report) | Done — waiting for green build |
-| 7 | Organising downloads, incognito, discreet notifications, clear history | Next |
+| 7 | Organising downloads, incognito, discreet notifications, clear history | Done — waiting for green build |
 
 ## Decisions so far
 - Bundled programs come only from official GitHub releases: yt-dlp (yt-dlp/yt-dlp), ffmpeg (yt-dlp/FFmpeg-Builds), deno (denoland/deno, needed by yt-dlp for YouTube).
@@ -28,7 +28,11 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 - Parabolic's "Cookies from Browser" setting: `None` now means "UniFetcher profile".
 - Extension: one source in `extension/src` + two manifests; `scripts/build-extension.ps1` builds both. Chromium ID is fixed by the public `key` in `manifest.chrome.json` (`iofbbjgpimljhofeflakhkjknpelglob`); Firefox ID `unifetcher-extension@obamna1234.github.io`. Native host `com.unifetcher.host` = `UniFetcher.NativeHost` (AOT console app) → named pipe `UniFetcher.Inbox.<user>` → `InboxService`. Registration is per-user (HKCU) on every app start.
 - Bulk Import: `LinkImportParser` (formats), `BulkImportService` (tables `unifetcher_bulk_jobs` / `unifetcher_bulk_items`, background worker that keeps the download queue topped up one fetch at a time), `BulkImportWindow` (built in code). Bulk downloads are tagged with `DownloadOptions.BulkItemId`, are not added to Parabolic's crash recovery (Bulk Import resumes them itself), and report their final result through `IDownloadService.DownloadFinished`.
+- Downloads Library is `LibraryWindow` (built in code) over Parabolic's history table; it replaces Parabolic's History dialog in the View menu. Windows notifications use the Windows App SDK `AppNotificationManager` (`WindowsNotifier`).
 - Test builds are versioned `0.0.0-dev.<run>`; releases take their version from the tag.
+
+## Next
+- All 7 stages are built. Next: test on your PC, then make the first release by pushing a version tag (HOW_TO.md → "Release a new version").
 
 ## Waiting on you
 - Optional, for a signed Firefox extension: create a Mozilla API key and add GitHub secrets `AMO_JWT_ISSUER` and `AMO_JWT_SECRET` (steps in HOW_TO.md → "Setting up Firefox signing").

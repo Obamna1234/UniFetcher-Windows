@@ -38,6 +38,8 @@ public sealed partial class MainWindow : Window
     // Only one dialog can be open at a time; links arriving from the extension wait their turn
     private readonly System.Threading.SemaphoreSlim _dialogGate = new System.Threading.SemaphoreSlim(1, 1);
     private BulkImportWindow? _bulkImportWindow;
+    private LibraryWindow? _libraryWindow;
+    private bool _isForeground = true;
 
     public MainWindow(IServiceProvider serviceProvider, MainWindowController controller, AppInfo appInfo, IEventsService eventsService, ITranslationService translationService)
     {
@@ -79,6 +81,16 @@ public sealed partial class MainWindow : Window
         eventsService.DownloadStartedFromQueue += (sender, e) => DispatcherQueue.TryEnqueue(() => Controller_DownloadStartedFromQueue(sender, e));
         eventsService.DownloadRetired += (sender, e) => DispatcherQueue.TryEnqueue(() => Controller_DownloadRetired(sender, e));
         _controller.LinksFromExtension += (sender, e) => DispatcherQueue.TryEnqueue(async () => await Controller_LinksFromExtensionAsync(e));
+        // UniFetcher: Windows notifications only while UniFetcher isn't the window you're looking at
+        _controller.WindowsNotificationRequested += (_, n) => DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!_isForeground)
+            {
+                Nickvision.Parabolic.WinUI.Helpers.WindowsNotifier.Show(n.Title, n.Text);
+            }
+        });
+        Activated += (_, e) => _isForeground = e.WindowActivationState != WindowActivationState.Deactivated;
+        Closed += (_, _) => Nickvision.Parabolic.WinUI.Helpers.WindowsNotifier.Unregister();
         eventsService.DownloadRequested += async (s, args) => await AddDownloadAsync(args.Url);
         // Translations
         AppWindow.Title = _appInfo.ShortName;
@@ -91,7 +103,7 @@ public sealed partial class MainWindow : Window
         MenuKeyring.Text = _translationService._("Keyring");
         MenuSettings.Text = _translationService._("Settings");
         MenuView.Title = _translationService._("View");
-        MenuHistory.Text = _translationService._("History");
+        MenuHistory.Text = _translationService._("Downloads Library");
         MenuDownloads.Title = _translationService._("Downloads");
         MenuStopAllRemaining.Text = _translationService._("Stop All Remaining");
         MenuRetryAllFailed.Text = _translationService._("Retry All Failed");
@@ -479,12 +491,15 @@ public sealed partial class MainWindow : Window
         FrameCustom.Content = settings;
     }
 
-    private async void History(object sender, RoutedEventArgs args)
+    private void History(object sender, RoutedEventArgs args)
     {
-        var historyDialog = _serviceProvider.GetRequiredService<HistoryDialog>();
-        historyDialog.RequestedTheme = MainGrid.ActualTheme;
-        historyDialog.XamlRoot = MainGrid.XamlRoot;
-        await historyDialog.ShowAsync();
+        // UniFetcher: the downloads library replaces Parabolic's history dialog
+        if (_libraryWindow is null)
+        {
+            _libraryWindow = new LibraryWindow(_serviceProvider.GetRequiredService<LibraryController>(), _translationService);
+            _libraryWindow.Closed += (_, _) => _libraryWindow = null;
+        }
+        _libraryWindow.Activate();
     }
 
     private async void CheckForUpdates(object? sender, RoutedEventArgs e)

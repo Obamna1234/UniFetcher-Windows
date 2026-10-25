@@ -27,6 +27,18 @@ public static class FileNameHelper
         return $"{name} ({Guid.NewGuid():N})";
     }
 
+    /// <summary>"example.com" subfolder inside the download folder when "Subfolder per site" is on.</summary>
+    public static string SiteFolder(string folder, Uri url, bool perSite)
+    {
+        if (!perSite)
+        {
+            return folder;
+        }
+        var site = Services.SiteSessionService.SiteOf(url);
+        var safe = string.Concat(site.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+        return string.IsNullOrEmpty(safe) ? folder : Path.Combine(folder, safe);
+    }
+
     private static bool IsTaken(string folder, string name)
     {
         try

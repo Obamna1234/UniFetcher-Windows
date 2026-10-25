@@ -16,6 +16,28 @@ public static class IConfigurationServiceExtensions
     extension(IConfigurationService configurationService)
     {
 
+        // ---- UniFetcher: organising and privacy (spec sections 6 and 7) ----
+        public bool SubfolderPerSite
+        {
+            get => configurationService.Get("SubfolderPerSite", false);
+
+            set => configurationService.Set("SubfolderPerSite", value);
+        }
+
+        public bool Incognito
+        {
+            get => configurationService.Get("Incognito", false);
+
+            set => configurationService.Set("Incognito", value);
+        }
+
+        public NotificationMode NotificationMode
+        {
+            get => configurationService.Get("NotificationMode", NotificationMode.Normal);
+
+            set => configurationService.Set("NotificationMode", value);
+        }
+
         // ---- UniFetcher: yt-dlp / ffmpeg updates (spec section 2) ----
         public ToolUpdateMode ToolUpdateMode
         {

@@ -20,6 +20,9 @@ public class PreferencesViewController
     private readonly IToolUpdateService _toolUpdateService;
     private readonly ISiteSessionService _sessions;
     private readonly IFirefoxProfileService _profile;
+    private readonly IHistoryService _historyService;
+    private readonly IDownloadRegistryService _registry;
+    private readonly IBulkImportService _bulkImportService;
 
     public IReadOnlyList<SelectionItem<AudioCodec>> AudioCodecs { get; }
     public IReadOnlyList<SelectionItem<string>> AvailableTranslationLanguages { get; }
@@ -34,14 +37,25 @@ public class PreferencesViewController
     public IReadOnlyList<SelectionItem<VideoCodec>> VideoCodecs { get; }
     public IReadOnlyList<SelectionItem<ToolUpdateMode>> ToolUpdateModes { get; }
     public IReadOnlyList<SelectionItem<YtdlpChannel>> YtdlpChannels { get; }
+    public IReadOnlyList<SelectionItem<NotificationMode>> NotificationModes { get; }
 
-    public PreferencesViewController(IConfigurationService configurationService, ITranslationService translationService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IFirefoxProfileService profile)
+    public PreferencesViewController(IConfigurationService configurationService, ITranslationService translationService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IFirefoxProfileService profile, IHistoryService historyService, IDownloadRegistryService registry, IBulkImportService bulkImportService)
     {
         _configurationService = configurationService;
         _translationService = translationService;
         _toolUpdateService = toolUpdateService;
         _sessions = sessions;
         _profile = profile;
+        _historyService = historyService;
+        _registry = registry;
+        _bulkImportService = bulkImportService;
+        var notificationMode = _configurationService.NotificationMode;
+        NotificationModes = new List<SelectionItem<NotificationMode>>()
+        {
+            new SelectionItem<NotificationMode>(Models.NotificationMode.Normal, _translationService._("Show video titles"), notificationMode == Models.NotificationMode.Normal),
+            new SelectionItem<NotificationMode>(Models.NotificationMode.Discreet, _translationService._("Discreet (no titles or pictures)"), notificationMode == Models.NotificationMode.Discreet),
+            new SelectionItem<NotificationMode>(Models.NotificationMode.Off, _translationService._("Off"), notificationMode == Models.NotificationMode.Off)
+        };
         var mode = _configurationService.ToolUpdateMode;
         ToolUpdateModes = new List<SelectionItem<ToolUpdateMode>>()
         {
@@ -498,4 +512,38 @@ public class PreferencesViewController
     public async Task<bool> ClearProfileDataAsync() => await _profile.ClearDataAsync();
 
     public async Task<bool> OpenProfileAsync() => await _profile.OpenWindowAsync();
+
+    // ---- UniFetcher: organising and privacy ----
+    public bool SubfolderPerSite
+    {
+        get => _configurationService.SubfolderPerSite;
+
+        set => _configurationService.SubfolderPerSite = value;
+    }
+
+    public bool Incognito
+    {
+        get => _configurationService.Incognito;
+
+        set => _configurationService.Incognito = value;
+    }
+
+    public SelectionItem<NotificationMode> NotificationMode
+    {
+        set => _configurationService.NotificationMode = value.Value;
+    }
+
+    /// <summary>Clears history, the "already downloaded" list, finished Bulk Imports and caches. Never deletes downloaded videos.</summary>
+    public async Task ClearHistoryAndCacheAsync(bool alsoBrowserProfile)
+    {
+        await _historyService.ClearAsync();
+        await _registry.ClearAsync();
+        await _bulkImportService.ClearFinishedAsync();
+        _profile.ClearCookieSnapshot();
+        if (alsoBrowserProfile)
+        {
+            await _sessions.ForgetAllAsync();
+            await _profile.ClearDataAsync();
+        }
+    }
 }

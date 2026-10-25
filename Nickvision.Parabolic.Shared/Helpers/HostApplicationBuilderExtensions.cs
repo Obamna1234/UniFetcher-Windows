@@ -58,6 +58,7 @@ public static class HostApplicationBuilderExtensions
             builder.Services.AddSingleton<IBulkImportService>(sp => sp.GetRequiredService<BulkImportService>());
             builder.Services.AddHostedService(sp => sp.GetRequiredService<BulkImportService>());
             builder.Services.AddTransient<BulkImportController>();
+            builder.Services.AddTransient<LibraryController>();
             return builder;
         }
     }

@@ -154,6 +154,40 @@
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
                             </community:SettingsCard>
+
+                            <!-- UniFetcher: privacy -->
+                            <community:SettingsCard x:Name="RowIncognito">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE727;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <ToggleSwitch x:Name="TglIncognito" Toggled="Tgl_Toggled"/>
+                            </community:SettingsCard>
+
+                            <community:SettingsCard x:Name="RowNotificationMode">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xEA8F;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <ComboBox x:Name="CmbNotificationMode" SelectionChanged="Cmb_SelectionChanged">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="helpers:BindableSelectionItem">
+                                            <TextBlock Text="{x:Bind Label}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </community:SettingsCard>
+
+                            <community:SettingsCard x:Name="RowClearHistory">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE74D;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <CheckBox x:Name="ChkClearProfileToo"/>
+                                    <Button x:Name="BtnClearHistory" Click="ClearHistoryAndCache"/>
+                                </StackPanel>
+                            </community:SettingsCard>
                         </StackPanel>
 
                         <StackPanel Spacing="6">
@@ -169,6 +203,14 @@
                                 </community:SettingsCard.HeaderIcon>
 
                                 <NumberBox x:Name="NumActiveDownloads" Minimum="1" Maximum="5" SpinButtonPlacementMode="Inline" ValueChanged="Num_ValueChanged"/>
+                            </community:SettingsCard>
+
+                            <community:SettingsCard x:Name="RowSubfolderPerSite">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8B7;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <ToggleSwitch x:Name="TglSubfolderPerSite" Toggled="Tgl_Toggled"/>
                             </community:SettingsCard>
 
                             <community:SettingsCard x:Name="RowOverwriteFiles" Visibility="Collapsed">

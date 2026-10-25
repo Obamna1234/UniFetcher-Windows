@@ -1,6 +1,13 @@
 # Changelog
 
 ## Unreleased
+### Organising and privacy (stage 7)
+- Downloads Library (View menu): list or thumbnail grid, search, sort by date/size/duration/name/site, source site and original link, Open file, Show in folder, Copy link, Download again, Remove (file kept unless "Also delete file" is ticked).
+- Optional subfolder per site.
+- Incognito mode: no download history kept while it's on.
+- Windows notifications: titles, discreet (generic text), or off; one notification per Bulk Import.
+- Clear history and cache (optionally also the UniFetcher browser profile).
+
 ### Bulk Import (stage 6)
 - File → Bulk Import (Ctrl+B): paste, import a file, drag a file onto the window, or "Send all tabs" from the extension.
 - Reads plain/mixed text, bookmarks HTML, Firefox bookmark backup JSON, tab-manager JSON/CSV and OneTab lists.

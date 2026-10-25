@@ -12,6 +12,7 @@ A plain-language guide. Sections marked *(coming soon)* describe features still 
 6. [Bulk Import (150+ links)](#bulk-import-150-links)
 7. [Using a VPN (PIA)](#using-a-vpn-pia)
 8. [Downloading to an external hard drive](#downloading-to-an-external-hard-drive)
+   - [Your downloads, privacy and notifications](#your-downloads-privacy-and-notifications)
 9. [Copy an error log and report a bug](#copy-an-error-log-and-report-a-bug)
 10. [Release a new version](#release-a-new-version)
 11. [Test a build before releasing it](#test-a-build-before-releasing-it)
@@ -174,6 +175,16 @@ What UniFetcher does with an external drive:
 - If the drive gets full, the queue pauses; free up space and it carries on. Before a big batch, it warns you if the videos might not fit.
 - On a FAT32 drive it warns you once, and skips (and lists as failed) any video over 4 GB instead of failing again and again.
 - "Already downloaded" checks still work while the drive is unplugged (UniFetcher keeps that list on your PC).
+
+### Your downloads, privacy and notifications
+
+- **View → Downloads Library** lists everything you've downloaded, as a list or with thumbnails. Search by title, site or link; sort by newest, oldest, name, size, duration or site. Each video has **Open file**, **Show in folder**, **Copy link**, **Download again** and **Remove from list**. Removing only takes it off the list; the file is deleted only if you tick **Also delete file**.
+- Settings → **Downloads**:
+  - **Subfolder per site**: saves each site's videos in its own folder (e.g. `youtube.com`).
+  - **Incognito mode**: while on, finished downloads aren't added to the history or the "already downloaded" list. (Bulk Import still keeps its own list so it can resume.)
+  - **Windows notifications**: *Show video titles*, *Discreet* (just "Download finished", no titles or pictures), or *Off*. They only appear while UniFetcher isn't the window you're using. Bulk Import sends one notification at the end, not one per video.
+  - **Clear history and cache**: forgets the history, the "already downloaded" list, finished Bulk Imports and cached files. Tick **Also clear UniFetcher browser data** to wipe the UniFetcher Firefox profile as well. Your videos are never deleted by this.
+- UniFetcher never overwrites a file: if a name is taken, the new file gets " (1)", " (2)" and so on.
 
 ## Copy an error log and report a bug
 

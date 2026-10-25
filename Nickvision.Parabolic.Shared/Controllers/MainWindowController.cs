@@ -35,12 +35,15 @@ public class MainWindowController
 
     /// <summary>UniFetcher: links sent from the browser extension (raised on a background thread).</summary>
     public event EventHandler<LinksReceivedEventArgs>? LinksFromExtension;
+
+    /// <summary>UniFetcher: a Windows notification to show (title, text), already made discreet if that setting is on. Raised on a background thread.</summary>
+    public event EventHandler<(string Title, string Text)>? WindowsNotificationRequested;
     private readonly IYtdlpExecutableService _ytdlpExecutableService;
     private AppVersion _latestAppVersion;
     private AppVersion _latestYtdlpVersion;
     private AppVersion _latestDenoVersion;
 
-    public MainWindowController(ILogger<MainWindowController> logger, AppInfo appInfo, IArgumentsService argumentsService, IConfigurationService configurationService, IDatabaseService databaseService, IDenoExecutableService denoExecutableService, IDownloadService downloadService, INotificationService notificationService, IPowerService powerService, IRecoveryService recoveryService, ITranslationService translationService, IUpdaterService updaterService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IInboxService inboxService, IYtdlpExecutableService ytdlpExecutableService)
+    public MainWindowController(ILogger<MainWindowController> logger, AppInfo appInfo, IArgumentsService argumentsService, IConfigurationService configurationService, IDatabaseService databaseService, IDenoExecutableService denoExecutableService, IDownloadService downloadService, INotificationService notificationService, IPowerService powerService, IRecoveryService recoveryService, ITranslationService translationService, IUpdaterService updaterService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IInboxService inboxService, IBulkImportService bulkImportService, IYtdlpExecutableService ytdlpExecutableService)
     {
         _logger = logger;
         _appInfo = appInfo;
@@ -57,6 +60,16 @@ public class MainWindowController
         _toolUpdateService = toolUpdateService;
         _sessions = sessions;
         inboxService.LinksReceived += (_, e) => LinksFromExtension?.Invoke(this, e);
+        // Windows notifications: one per normal download, one per finished Bulk Import (not one per bulk link)
+        downloadService.DownloadFinished += (_, e) =>
+        {
+            if (string.IsNullOrEmpty(e.Options.BulkItemId) && e.Status is DownloadStatus.Success or DownloadStatus.Error)
+            {
+                var name = System.IO.Path.GetFileNameWithoutExtension(e.FilePath);
+                Notify(e.Status == DownloadStatus.Success ? _translationService._("Download finished") : _translationService._("Download failed"), name);
+            }
+        };
+        bulkImportService.JobFinished += (_, _) => Notify(_translationService._("Bulk Import finished"), _translationService._("Open UniFetcher to see the report."));
         _toolUpdateService.UpdateFound += ToolUpdateService_UpdateFound;
         _ytdlpExecutableService = ytdlpExecutableService;
         _latestAppVersion = appInfo.Version!;
@@ -400,6 +413,22 @@ public class MainWindowController
             _notificationService.Send(new AppNotification(_translationService._("yt-dlp and ffmpeg are up to date"), NotificationSeverity.Success));
         }
         // "Installed" is announced by ToolUpdateService_UpdateFound
+    }
+
+    private void Notify(string title, string detail)
+    {
+        switch (_configurationService.NotificationMode)
+        {
+            case NotificationMode.Off:
+                return;
+            case NotificationMode.Discreet:
+                // Generic text only: no titles, no thumbnails
+                WindowsNotificationRequested?.Invoke(this, (_appInfo.ShortName ?? "UniFetcher", title));
+                return;
+            default:
+                WindowsNotificationRequested?.Invoke(this, (title, detail));
+                return;
+        }
     }
 
     /// <summary>UniFetcher: opens a link in the UniFetcher Firefox profile (for logins / "verify you are human" checks).</summary>

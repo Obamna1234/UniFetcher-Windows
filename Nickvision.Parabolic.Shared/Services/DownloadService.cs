@@ -99,7 +99,7 @@ public class DownloadService : IDisposable, IDownloadService
         {
             await _recoveryService.AddAsync(new RecoverableDownload(download.Id, download.Options));
         }
-        if (!excludeFromHistory)
+        if (!excludeFromHistory && !_configurationService.Incognito)
         {
             await _historyService.AddAsync(new HistoricDownload(download.Options.Url)
             {
@@ -139,7 +139,7 @@ public class DownloadService : IDisposable, IDownloadService
             {
                 recoverableDownloads.Add(new RecoverableDownload(download.Id, download.Options));
             }
-            if (!excludeFromHistory)
+            if (!excludeFromHistory && !_configurationService.Incognito)
             {
                 historicDownloads.Add(new HistoricDownload(download.Options.Url)
                 {
@@ -446,6 +446,7 @@ public class DownloadService : IDisposable, IDownloadService
             // UniFetcher: remember it, so the same video isn't downloaded twice by accident
             try
             {
+                if (!_configurationService.Incognito)
                 await _downloadRegistryService.MarkDownloadedAsync(download.Options.Url, download.Options.VideoKey, Path.GetFileNameWithoutExtension(download.FilePath), download.FilePath);
             }
             catch (Exception ex)

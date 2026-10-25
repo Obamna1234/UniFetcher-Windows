@@ -119,7 +119,7 @@ public class AddDownloadDialogController
                 Credential = context.Credential,
                 VideoKey = media.VideoKey,
                 SaveFilename = $"{(numberTitles ? $"{titleNumber++} - " : string.Empty)}{(string.IsNullOrEmpty(item.Filename) ? media.Title : item.Filename.SanitizeForFilename(_configurationService.LimitCharacters))}",
-                SaveFolder = Path.Combine(!string.IsNullOrEmpty(media.SuggestedSaveFolder) ? media.SuggestedSaveFolder : saveFolder, context.Title.SanitizeForFilename(_configurationService.LimitCharacters)),
+                SaveFolder = Path.Combine(FileNameHelper.SiteFolder(!string.IsNullOrEmpty(media.SuggestedSaveFolder) ? media.SuggestedSaveFolder : saveFolder, media.Url, _configurationService.SubfolderPerSite), context.Title.SanitizeForFilename(_configurationService.LimitCharacters)),
                 FileType = selectedFileType.Value.IsVideo && media.Type == MediaType.Audio ? _configurationService.PreviousAudioOnlyFileType : selectedFileType.Value,
                 PlaylistPosition = media.PlaylistPosition,
                 RequiresPlaylistItems = media.RequiresPlaylistItems,
@@ -179,7 +179,7 @@ public class AddDownloadDialogController
         await transaction.CommitAsync();
         try
         {
-            await _downloadService.AddAsync(options, excludeFromHistory);
+            await _downloadService.AddAsync(options, excludeFromHistory || _configurationService.Incognito);
             if (exportM3U)
             {
                 await m3uFile.WriteAsync(Path.Combine(saveFolder, context.Title.SanitizeForFilename(_configurationService.LimitCharacters), $"{context.Title.SanitizeForFilename(_configurationService.LimitCharacters)}.m3u"));
@@ -222,10 +222,11 @@ public class AddDownloadDialogController
             PostProcessorArgument = selectedPostProcessorArgument.Value,
             TimeFrame = TimeFrame.TryParse(startTime, endTime, media.TimeFrame.Duration, out var timeFrame) && timeFrame != media.TimeFrame ? timeFrame : null
         };
-        // UniFetcher: never overwrite an existing file; give the new one a numbered name instead
+        // UniFetcher: optional subfolder per site; never overwrite an existing file (numbered name instead)
+        options.SaveFolder = FileNameHelper.SiteFolder(options.SaveFolder, options.Url, _configurationService.SubfolderPerSite);
         options.SaveFilename = FileNameHelper.UniqueName(options.SaveFolder, options.SaveFilename);
         using var transaction = await _configurationService.CreateTransactionAsync();
-        _configurationService.PreviousSaveFolder = options.SaveFolder;
+        _configurationService.PreviousSaveFolder = saveFolder;
         if (media.Type == MediaType.Video)
         {
             _configurationService.PreviousFullFileType = options.FileType;
@@ -261,7 +262,7 @@ public class AddDownloadDialogController
         await transaction.CommitAsync();
         try
         {
-            await _downloadService.AddAsync(options, excludeFromHistory);
+            await _downloadService.AddAsync(options, excludeFromHistory || _configurationService.Incognito);
         }
         catch (Exception e)
         {
