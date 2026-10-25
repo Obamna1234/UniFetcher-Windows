@@ -20,6 +20,8 @@ public class Media
     public List<SubtitleLanguage> Subtitles { get; }
     public Uri ThumbnailUrl { get; }
     public string SuggestedSaveFolder { get; }
+    /// <summary>UniFetcher: "site:id" from yt-dlp (e.g. "youtube:dQw4w9WgXcQ"), used to spot videos already downloaded. Empty if unknown.</summary>
+    public string VideoKey { get; }
 
     private Media(string suggestedSaveFolder, string suggestedSaveFilename)
     {
@@ -33,10 +35,20 @@ public class Media
         Subtitles = new List<SubtitleLanguage>();
         ThumbnailUrl = Uri.Empty;
         SuggestedSaveFolder = suggestedSaveFolder;
+        VideoKey = string.Empty;
     }
 
     public Media(JsonElement ytdlp, IConfigurationService configurationService, ITranslationService translator, string suggestedSaveFolder, string suggestedSaveFilename) : this(suggestedSaveFolder, suggestedSaveFilename)
     {
+        if (ytdlp.TryGetProperty("id", out var idProperty) && idProperty.ValueKind == JsonValueKind.String)
+        {
+            var site = ytdlp.TryGetProperty("extractor_key", out var extractorProperty) && extractorProperty.ValueKind == JsonValueKind.String ? extractorProperty.GetString()
+                : ytdlp.TryGetProperty("ie_key", out var ieProperty) && ieProperty.ValueKind == JsonValueKind.String ? ieProperty.GetString() : null;
+            if (!string.IsNullOrEmpty(site) && !string.IsNullOrEmpty(idProperty.GetString()))
+            {
+                VideoKey = $"{site}:{idProperty.GetString()}";
+            }
+        }
         if (ytdlp.TryGetProperty("playlist_index", out var playlistIndexProperty) && playlistIndexProperty.ValueKind != JsonValueKind.Null)
         {
             PlaylistPosition = playlistIndexProperty.GetInt32();
@@ -266,6 +278,7 @@ public class Media
             Formats.Insert(0, Format.BestAudio);
             Formats.Insert(0, Format.WorstVideo);
             Formats.Insert(0, Format.BestVideo);
+            Formats.Insert(0, Format.SmartVideo);
         }
         else if (hasAudioFormats)
         {
@@ -278,6 +291,7 @@ public class Media
             Type = MediaType.Video;
             Formats.Insert(0, Format.WorstVideo);
             Formats.Insert(0, Format.BestVideo);
+            Formats.Insert(0, Format.SmartVideo);
         }
         Formats.Insert(0, Format.NoneVideo);
         Formats.Insert(0, Format.NoneAudio);

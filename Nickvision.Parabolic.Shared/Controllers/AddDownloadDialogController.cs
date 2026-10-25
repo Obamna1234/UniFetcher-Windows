@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Nickvision.Desktop.Application;
 using Nickvision.Desktop.Globalization;
 using Nickvision.Desktop.Keyring;
@@ -27,6 +27,8 @@ public class AddDownloadDialogController
     private readonly INotificationService _notificationService;
     private readonly IThumbnailService _thumbnailService;
     private readonly ITranslationService _translationService;
+    private readonly IDownloadRegistryService _downloadRegistryService;
+    private readonly IQueueGuardService _queueGuard;
     private readonly Dictionary<int, DiscoveryContext> _discoveryContextMap;
 
     public Dictionary<MediaFileType, string> PreviousAudioFormatIds => _configurationService.PreviousAudioFormatIds;
@@ -38,7 +40,7 @@ public class AddDownloadDialogController
     public bool PreviousSplitChapters => _configurationService.PreviousSplitChapters;
     public Dictionary<MediaFileType, string> PreviousVideoFormatIds => _configurationService.PreviousVideoFormatIds;
 
-    public AddDownloadDialogController(ILogger<AddDownloadDialogController> logger, IConfigurationService configurationService, IDiscoveryService discoveryService, IDownloadService downloadService, IKeyringService keyringService, INotificationService notificationService, IThumbnailService thumbnailService, ITranslationService translationService)
+    public AddDownloadDialogController(ILogger<AddDownloadDialogController> logger, IConfigurationService configurationService, IDiscoveryService discoveryService, IDownloadService downloadService, IKeyringService keyringService, INotificationService notificationService, IThumbnailService thumbnailService, ITranslationService translationService, IDownloadRegistryService downloadRegistryService, IQueueGuardService queueGuard)
     {
         _logger = logger;
         _configurationService = configurationService;
@@ -48,6 +50,8 @@ public class AddDownloadDialogController
         _notificationService = notificationService;
         _thumbnailService = thumbnailService;
         _translationService = translationService;
+        _downloadRegistryService = downloadRegistryService;
+        _queueGuard = queueGuard;
         _discoveryContextMap = new Dictionary<int, DiscoveryContext>();
     }
 
@@ -92,6 +96,7 @@ public class AddDownloadDialogController
             selectedSubtitles.Add(selectedSubtitleLanguage.Value);
         }
         var options = new List<DownloadOptions>(items.Count);
+        var reservedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var titleNumber = 1;
         for (var i = reverseDownloadOrder ? items.Count - 1 : 0; reverseDownloadOrder ? i >= 0 : i < items.Count; i += reverseDownloadOrder ? -1 : 1)
         {
@@ -112,6 +117,7 @@ public class AddDownloadDialogController
             options.Add(new DownloadOptions(media.Url)
             {
                 Credential = context.Credential,
+                VideoKey = media.VideoKey,
                 SaveFilename = $"{(numberTitles ? $"{titleNumber++} - " : string.Empty)}{(string.IsNullOrEmpty(item.Filename) ? media.Title : item.Filename.SanitizeForFilename(_configurationService.LimitCharacters))}",
                 SaveFolder = Path.Combine(!string.IsNullOrEmpty(media.SuggestedSaveFolder) ? media.SuggestedSaveFolder : saveFolder, context.Title.SanitizeForFilename(_configurationService.LimitCharacters)),
                 FileType = selectedFileType.Value.IsVideo && media.Type == MediaType.Audio ? _configurationService.PreviousAudioOnlyFileType : selectedFileType.Value,
@@ -125,6 +131,22 @@ public class AddDownloadDialogController
                 PostProcessorArgument = selectedPostProcessorArgument.Value,
                 TimeFrame = TimeFrame.TryParse(item.StartTime, item.EndTime, media.TimeFrame.Duration, out var timeFrame) && timeFrame != media.TimeFrame ? timeFrame : null
             });
+        }
+        // UniFetcher: never overwrite an existing file; give the new one a numbered name instead
+        foreach (var option in options)
+        {
+            option.SaveFilename = FileNameHelper.UniqueName(option.SaveFolder, option.SaveFilename, reservedNames);
+        }
+        // UniFetcher: rough free-space check (about 2.2 GB per hour of video at up to 1080p)
+        var seconds = items.Sum(x => x.Duration.TotalSeconds);
+        var free = _queueGuard.FreeSpace(saveFolder);
+        if (selectedFileType.Value.IsVideo && seconds > 0 && free is not null)
+        {
+            var estimate = (long)(seconds * 0.6 * 1024 * 1024);
+            if (estimate > free.Value)
+            {
+                _notificationService.Send(new AppNotification(_translationService._("These downloads may need about {0:0.0} GB, but the download drive has {1:0.0} GB free. UniFetcher will pause if it fills up.", estimate / 1073741824.0, free.Value / 1073741824.0), NotificationSeverity.Warning));
+            }
         }
         using var transaction = await _configurationService.CreateTransactionAsync();
         m3uFile.Add(options);
@@ -186,6 +208,7 @@ public class AddDownloadDialogController
         var options = new DownloadOptions(media.Url)
         {
             Credential = context.Credential,
+            VideoKey = media.VideoKey,
             SaveFilename = string.IsNullOrEmpty(saveFilename) ? media.Title : saveFilename.SanitizeForFilename(_configurationService.LimitCharacters),
             SaveFolder = saveFolder,
             FileType = selectedFileType.Value,
@@ -199,6 +222,8 @@ public class AddDownloadDialogController
             PostProcessorArgument = selectedPostProcessorArgument.Value,
             TimeFrame = TimeFrame.TryParse(startTime, endTime, media.TimeFrame.Duration, out var timeFrame) && timeFrame != media.TimeFrame ? timeFrame : null
         };
+        // UniFetcher: never overwrite an existing file; give the new one a numbered name instead
+        options.SaveFilename = FileNameHelper.UniqueName(options.SaveFolder, options.SaveFilename);
         using var transaction = await _configurationService.CreateTransactionAsync();
         _configurationService.PreviousSaveFolder = options.SaveFolder;
         if (media.Type == MediaType.Video)
@@ -317,7 +342,9 @@ public class AddDownloadDialogController
                 }
                 context.VideoResolutions.Sort((a, b) => a.Value.CompareTo(b.Value));
                 context.VideoResolutions.Insert(0, new SelectionItem<VideoResolution>(VideoResolution.Worst, VideoResolution.Worst.ToString(_translationService), _configurationService.PreviousVideoResolution == VideoResolution.Worst));
-                context.VideoResolutions.Insert(0, new SelectionItem<VideoResolution>(VideoResolution.Best, VideoResolution.Best.ToString(_translationService), !matched || _configurationService.PreviousVideoResolution == VideoResolution.Best));
+                context.VideoResolutions.Insert(0, new SelectionItem<VideoResolution>(VideoResolution.Best, VideoResolution.Best.ToString(_translationService), matched && _configurationService.PreviousVideoResolution == VideoResolution.Best));
+                // UniFetcher: the quality rule is the default for playlists and batches
+                context.VideoResolutions.Insert(0, new SelectionItem<VideoResolution>(VideoResolution.Smart, VideoResolution.Smart.ToString(_translationService), !matched || _configurationService.PreviousVideoResolution == VideoResolution.Smart));
             }
             var hasVideo = false;
             foreach (var media in res.Media)
@@ -360,10 +387,38 @@ public class AddDownloadDialogController
             }
             context.SubtitleLanguages.Sort((a, b) => a.Value.CompareTo(b.Value));
             context.Items.EnsureCapacity(res.Media.Count);
+            var duplicates = 0;
+            DownloadedRecord? firstDuplicate = null;
             for (var i = 0; i < res.Media.Count; i++)
             {
                 var media = res.Media[i];
-                context.Items.Add(new MediaSelectionItem(i, media, _translationService));
+                var item = new MediaSelectionItem(i, media, _translationService);
+                // UniFetcher: spot videos already downloaded (by link and by site+ID) and untick them
+                var record = await _downloadRegistryService.FindAsync(media.Url, media.VideoKey);
+                if (record is not null)
+                {
+                    item.ShouldSelect = false;
+                    duplicates++;
+                    firstDuplicate ??= record;
+                }
+                context.Items.Add(item);
+            }
+            var warnings = new List<string>();
+            if (!res.IsPlaylist && firstDuplicate is not null)
+            {
+                warnings.Add(_translationService._("Already downloaded on {0}: {1}. Only download it again if you need another copy.", firstDuplicate.DownloadedOn.ToString("d"), firstDuplicate.Path));
+            }
+            else if (duplicates > 0)
+            {
+                warnings.Add(_translationService._("{0} of {1} items were already downloaded and have been unticked.", duplicates, res.Media.Count));
+            }
+            if (res.IsPlaylist && res.Media.Count > 50)
+            {
+                warnings.Add(_translationService._("This list has {0} items. Downloading more than 50 at once can get you blocked by the site; consider unticking some.", res.Media.Count));
+            }
+            if (warnings.Count > 0)
+            {
+                _notificationService.Send(new AppNotification(string.Join(" ", warnings), NotificationSeverity.Warning));
             }
             _discoveryContextMap[res.Id] = context;
             return context;

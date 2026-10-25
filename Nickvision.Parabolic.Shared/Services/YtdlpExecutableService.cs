@@ -26,6 +26,7 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
 
     private readonly IDenoExecutableService _denoExecutableService;
     private readonly IToolUpdateService _toolUpdateService;
+    private readonly IQueueGuardService _queueGuard;
 
     static YtdlpExecutableService()
     {
@@ -56,11 +57,12 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
         PartialDownloadFilePatterns = ["*.part*", "*.vtt", "*.srt", "*.ass", "*.lrc"];
     }
 
-    public YtdlpExecutableService(ILogger<YtdlpExecutableService> logger, ILogger<UpdaterService> updaterLogger, IConfigurationService configurationService, IDenoExecutableService denoExecutableService, IToolUpdateService toolUpdateService, IHttpClientFactory httpClientFactory)
+    public YtdlpExecutableService(ILogger<YtdlpExecutableService> logger, ILogger<UpdaterService> updaterLogger, IConfigurationService configurationService, IDenoExecutableService denoExecutableService, IToolUpdateService toolUpdateService, IQueueGuardService queueGuard, IHttpClientFactory httpClientFactory)
         : base(logger, "yt-dlp", YtdlpBundledVersion, YtdlpAssetName, configurationService, new UpdaterService(updaterLogger, "yt-dlp", "yt-dlp", httpClientFactory.CreateClient()), new UpdaterService(updaterLogger, "yt-dlp", "yt-dlp-nightly-builds", httpClientFactory.CreateClient()))
     {
         _denoExecutableService = denoExecutableService;
         _toolUpdateService = toolUpdateService;
+        _queueGuard = queueGuard;
     }
 
     /// <summary>UniFetcher: yt-dlp is chosen by the tool update service (installed update, or the bundled copy).</summary>
@@ -143,8 +145,13 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
             "[UniFetcher] Progress;%(progress.status)s;%(progress.downloaded_bytes)s;%(progress.total_bytes)s;%(progress.total_bytes_estimate)s;%(progress.speed)s;%(progress.eta)s",
             "--progress-delta",
             ".75",
-            "-t",
-            "sleep",
+            // UniFetcher: polite delays between requests / items so sites don't block a long queue (spec: 2-5 seconds)
+            "--sleep-requests",
+            "2",
+            "--sleep-interval",
+            "2",
+            "--max-sleep-interval",
+            "5",
             "--no-mtime",
             "--no-embed-info-json",
             "--ffmpeg-location",
@@ -254,6 +261,15 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
                 _ => "+vcodec:h264"
             };
         }
+        var isSmart = (downloadOptions.VideoFormat is not null && downloadOptions.VideoFormat == Format.SmartVideo) || (downloadOptions.VideoFormat is null && downloadOptions.VideoResolution is not null && downloadOptions.VideoResolution == VideoResolution.Smart);
+        if (isSmart && !downloadOptions.FileType.IsAudio)
+        {
+            // Largest resolution up to 1080p; if there's none, the smallest above it. Then prefer MP4/M4A at the same size.
+            formatSort = string.IsNullOrEmpty(formatSort) ? "res:1080,ext:mp4:m4a" : $"res:1080,{formatSort},ext:mp4:m4a";
+            // Merge into MP4 where possible, MKV if the streams can't go in MP4. Never re-encode.
+            arguments.Add("--merge-output-format");
+            arguments.Add("mp4/mkv");
+        }
         if (!string.IsNullOrEmpty(formatSort))
         {
             arguments.Add("--format-sort");
@@ -262,6 +278,12 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
         if (!_configurationService.UsePartFiles)
         {
             arguments.Add("--no-part");
+        }
+        if (_queueGuard.IsFat32(downloadOptions.SaveFolder))
+        {
+            // UniFetcher: FAT32 can't hold files over 4 GB; skip those instead of failing over and over
+            arguments.Add("--max-filesize");
+            arguments.Add("4095M");
         }
         if (_configurationService.YouTubeSponsorBlock)
         {
@@ -421,7 +443,14 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
                 _ => $"(bestaudio[abr={downloadOptions.AudioBitrate.Value}]{noOpus}/bestaudio[abr<={downloadOptions.AudioBitrate.Value}]{noOpus}/bestaudio)"
             };
         }
-        if (downloadOptions.VideoFormat is not null && downloadOptions.VideoFormat != Format.NoneVideo)
+        if (downloadOptions.VideoFormat is not null && downloadOptions.VideoFormat == Format.SmartVideo && !downloadOptions.FileType.IsAudio)
+        {
+            // UniFetcher quality rule, with the chosen audio (or the best audio) merged in
+            var noAudio = downloadOptions.AudioFormat is not null && downloadOptions.AudioFormat == Format.NoneAudio;
+            formatString = SmartFormat(noAudio ? string.Empty : $"+{(string.IsNullOrEmpty(audioSelector) ? "bestaudio" : audioSelector)}");
+            audioHandled = true;
+        }
+        else if (downloadOptions.VideoFormat is not null && downloadOptions.VideoFormat != Format.NoneVideo)
         {
             if (!downloadOptions.FileType.IsAudio)
             {
@@ -442,6 +471,7 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
             var audio = string.IsNullOrEmpty(audioSelector) ? string.Empty : $"+{audioSelector}";
             formatString = downloadOptions.VideoResolution switch
             {
+                var v when v == VideoResolution.Smart => SmartFormat(string.IsNullOrEmpty(audio) ? "+bestaudio" : audio),
                 var v when v == VideoResolution.Best => $"bestvideo*{audio}",
                 var v when v == VideoResolution.Worst => $"worstvideo*{audio}",
                 _ => $"bestvideo*[height={downloadOptions.VideoResolution.Height}]{audio}/bestvideo*[width={downloadOptions.VideoResolution.Height}]{audio}/bestvideo*[height<={downloadOptions.VideoResolution.Height}]{audio}/bestvideo*[width<={downloadOptions.VideoResolution.Height}]{audio}/bestvideo*{audio}"
@@ -572,6 +602,24 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
         // UniFetcher: updates go through the tool update service (channel, checksums, roll back)
         var res = await _toolUpdateService.CheckAsync(true, progress);
         return res.Outcome is ToolUpdateOutcome.Installed or ToolUpdateOutcome.UpToDate;
+    }
+
+    /// <summary>
+    /// UniFetcher quality rule (spec section 5): highest up to 1080p, prefer at least 720p, go lower only if nothing at 720p+ exists,
+    /// and if a video only exists above 1080p take the lowest version above 1080p. "p" means the short side, so portrait videos work too.
+    /// Used together with --format-sort res:1080.
+    /// </summary>
+    /// <param name="audio">"+&lt;audio selector&gt;" to merge audio in, or empty for video only.</param>
+    private static string SmartFormat(string audio)
+    {
+        const string inRange = "[height>=720][height<=1080][width>=height]";
+        const string inRangePortrait = "[width>=720][width<=1080][height>width]";
+        const string above = "[height>1080][width>=height]";
+        const string abovePortrait = "[width>1080][height>width]";
+        return string.Join('/',
+            $"bestvideo*{inRange}{audio}", $"bestvideo*{inRangePortrait}{audio}", $"best{inRange}", $"best{inRangePortrait}",
+            $"bestvideo*{above}{audio}", $"bestvideo*{abovePortrait}{audio}", $"best{above}", $"best{abovePortrait}",
+            $"bestvideo*{audio}", "best");
     }
 
     private string CookiesFromBrowserArgument

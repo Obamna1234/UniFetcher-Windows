@@ -21,6 +21,9 @@ public class DownloadService : IDisposable, IDownloadService
     private readonly ITranslationService _translationService;
     private readonly IYtdlpExecutableService _ytdlpService;
     private readonly IToolUpdateService _toolUpdateService;
+    private readonly IDownloadRegistryService _downloadRegistryService;
+    private readonly IQueueGuardService _queueGuard;
+    private readonly object _queueLock = new object();
     // Downloads already retried once after a yt-dlp update (spec: retry once only)
     private readonly HashSet<string> _retriedAfterUpdate;
     private readonly Dictionary<int, Download> _downloading;
@@ -38,7 +41,7 @@ public class DownloadService : IDisposable, IDownloadService
     public int QueuedCount => _queued.Count;
     public int CompletedCount => _completed.Count;
 
-    public DownloadService(ILogger<DownloadService> logger, IConfigurationService configurationService, IHistoryService historyService, IRecoveryService recoveryService, ITranslationService translationService, IYtdlpExecutableService ytdlpService, IToolUpdateService toolUpdateService)
+    public DownloadService(ILogger<DownloadService> logger, IConfigurationService configurationService, IHistoryService historyService, IRecoveryService recoveryService, ITranslationService translationService, IYtdlpExecutableService ytdlpService, IToolUpdateService toolUpdateService, IDownloadRegistryService downloadRegistryService, IQueueGuardService queueGuard)
     {
         _logger = logger;
         _configurationService = configurationService;
@@ -47,6 +50,9 @@ public class DownloadService : IDisposable, IDownloadService
         _translationService = translationService;
         _ytdlpService = ytdlpService;
         _toolUpdateService = toolUpdateService;
+        _downloadRegistryService = downloadRegistryService;
+        _queueGuard = queueGuard;
+        _queueGuard.Resumed += (_, _) => StartNextQueued();
         _retriedAfterUpdate = new HashSet<string>();
         _downloading = new Dictionary<int, Download>();
         _queued = new Dictionary<int, Download>();
@@ -76,6 +82,7 @@ public class DownloadService : IDisposable, IDownloadService
 
     public async Task AddAsync(DownloadOptions options, bool excludeFromHistory)
     {
+        _queueGuard.StampDrive(options);
         var download = new Download(_configurationService, _translationService, _ytdlpService, options);
         _logger.LogDebug($"Adding download ({download.Id}): {JsonSerializer.Serialize(options, ApplicationJsonContext.Default.DownloadOptions)}");
         download.Completed += Download_Completed;
@@ -89,9 +96,10 @@ public class DownloadService : IDisposable, IDownloadService
                 Path = download.FilePath
             });
         }
-        if (_downloading.Count < _configurationService.MaxNumberOfActiveDownloads)
+        if (_downloading.Count < _configurationService.MaxNumberOfActiveDownloads && _queueGuard.CanStart(download.Options))
         {
             _logger.LogDebug($"Starting download ({download.Id}).");
+            download.RefreshFilePath();
             _downloading.Add(download.Id, download);
             DownloadAdded?.Invoke(this, new DownloadAddedEventArgs(download.Id, download.FilePath, download.Options.Url, DownloadStatus.Running));
             download.Start();
@@ -111,6 +119,7 @@ public class DownloadService : IDisposable, IDownloadService
         var downloadsToStart = new List<Download>();
         foreach (var option in options)
         {
+            _queueGuard.StampDrive(option);
             var download = new Download(_configurationService, _translationService, _ytdlpService, option);
             _logger.LogDebug($"Adding download ({download.Id}): {JsonSerializer.Serialize(option, ApplicationJsonContext.Default.DownloadOptions)}");
             download.Completed += Download_Completed;
@@ -124,9 +133,10 @@ public class DownloadService : IDisposable, IDownloadService
                     Path = download.FilePath
                 });
             }
-            if (_downloading.Count < _configurationService.MaxNumberOfActiveDownloads)
+            if (_downloading.Count < _configurationService.MaxNumberOfActiveDownloads && _queueGuard.CanStart(download.Options))
             {
                 _logger.LogDebug($"Starting download ({download.Id}).");
+                download.RefreshFilePath();
                 _downloading.Add(download.Id, download);
                 DownloadAdded?.Invoke(this, new DownloadAddedEventArgs(download.Id, download.FilePath, download.Options.Url, DownloadStatus.Running));
                 downloadsToStart.Add(download);
@@ -363,6 +373,14 @@ public class DownloadService : IDisposable, IDownloadService
         if (e.Status == DownloadStatus.Error)
         {
             _logger.LogError($"Download failed ({e.Id}): {download.Log}");
+            // UniFetcher: lost internet / unplugged or full drive is not the download's fault: put it back in the queue (the queue pauses)
+            var kind = await _queueGuard.ClassifyFailureAsync(download.Options, download.Log);
+            if (kind != FailureKind.Other)
+            {
+                _logger.LogInformation($"Download ({e.Id}) interrupted ({kind}); putting it back in the queue.");
+                await RequeueAsync(download);
+                return;
+            }
             var retryKey = download.Options.Url.ToString() + "|" + download.FilePath;
             if (ToolUpdateService.IsExtractorError(download.Log) && _retriedAfterUpdate.Add(retryKey))
             {
@@ -380,6 +398,15 @@ public class DownloadService : IDisposable, IDownloadService
         else if (e.Status == DownloadStatus.Success)
         {
             _logger.LogDebug($"Download completed ({e.Id}): {download.Log}");
+            // UniFetcher: remember it, so the same video isn't downloaded twice by accident
+            try
+            {
+                await _downloadRegistryService.MarkDownloadedAsync(download.Options.Url, download.Options.VideoKey, Path.GetFileNameWithoutExtension(download.FilePath), download.FilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Could not remember completed download ({e.Id}): {ex.Message}");
+            }
         }
         else if (e.Status == DownloadStatus.Stopped)
         {
@@ -391,12 +418,22 @@ public class DownloadService : IDisposable, IDownloadService
 
     private void StartNextQueued()
     {
-        if (_queued.Count > 0 && _downloading.Count < _configurationService.MaxNumberOfActiveDownloads)
+        lock (_queueLock)
         {
-            using var queuedEnumerator = _queued.GetEnumerator();
-            if (queuedEnumerator.MoveNext())
+            while (_queued.Count > 0 && _downloading.Count < _configurationService.MaxNumberOfActiveDownloads)
             {
+                using var queuedEnumerator = _queued.GetEnumerator();
+                if (!queuedEnumerator.MoveNext())
+                {
+                    return;
+                }
                 var firstDownload = queuedEnumerator.Current.Value;
+                if (!_queueGuard.CanStart(firstDownload.Options))
+                {
+                    // Paused (no internet / drive missing or full); the guard calls back when it's resolved
+                    return;
+                }
+                firstDownload.RefreshFilePath();
                 _downloading.Add(firstDownload.Id, firstDownload);
                 _queued.Remove(firstDownload.Id);
                 _logger.LogDebug($"Starting download from queue ({firstDownload.Id}).");
@@ -404,6 +441,25 @@ public class DownloadService : IDisposable, IDownloadService
                 firstDownload.Start();
             }
         }
+    }
+
+    /// <summary>Puts an interrupted download back in the queue as a fresh item (partial files are kept, so yt-dlp continues where it stopped).</summary>
+    private async Task RequeueAsync(Download old)
+    {
+        _completed.Remove(old.Id);
+        old.Completed -= Download_Completed;
+        old.ProgressChanged -= Download_ProgressChanged;
+        DownloadRetired?.Invoke(this, new DownloadEventArgs(old.Id));
+        var download = new Download(_configurationService, _translationService, _ytdlpService, old.Options);
+        download.Completed += Download_Completed;
+        download.ProgressChanged += Download_ProgressChanged;
+        old.Dispose();
+        lock (_queueLock)
+        {
+            _queued.Add(download.Id, download);
+        }
+        await _recoveryService.AddAsync(new RecoverableDownload(download.Id, download.Options));
+        DownloadAdded?.Invoke(this, new DownloadAddedEventArgs(download));
     }
 
     private void Download_ProgressChanged(object? sender, DownloadProgressChangedEventArgs e)

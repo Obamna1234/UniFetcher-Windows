@@ -1,4 +1,4 @@
-﻿using Nickvision.Desktop.Globalization;
+using Nickvision.Desktop.Globalization;
 using System;
 using System.Text;
 using System.Text.Json;
@@ -9,6 +9,8 @@ namespace Nickvision.Parabolic.Shared.Models;
 public class Format : IComparable<Format>, IEquatable<Format>
 {
     public static Format BestVideo { get; }
+    /// <summary>UniFetcher quality rule: best up to 1080p, prefer at least 720p, lowest above 1080p if that's all there is.</summary>
+    public static Format SmartVideo { get; }
     public static Format BestAudio { get; }
     public static Format WorstVideo { get; }
     public static Format WorstAudio { get; }
@@ -33,6 +35,7 @@ public class Format : IComparable<Format>, IEquatable<Format>
     static Format()
     {
         BestVideo = new Format("BEST_VIDEO", "BEST", MediaType.Video);
+        SmartVideo = new Format("SMART_VIDEO", "SMART", MediaType.Video);
         BestAudio = new Format("BEST_AUDIO", "BEST", MediaType.Audio);
         WorstVideo = new Format("WORST_VIDEO", "WORST", MediaType.Video);
         WorstAudio = new Format("WORST_AUDIO", "WORST", MediaType.Audio);
@@ -349,6 +352,7 @@ public class Format : IComparable<Format>, IEquatable<Format>
         }
         var idLabel = Id switch
         {
+            "SMART_VIDEO" => translator?._("Smart: best up to 1080p") ?? "Smart: best up to 1080p",
             "BEST_VIDEO" => translator?._("Best") ?? "Best",
             "BEST_AUDIO" => translator?._("Best") ?? "Best",
             "WORST_VIDEO" => translator?._("Worst") ?? "Worst",

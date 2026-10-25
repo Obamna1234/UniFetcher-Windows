@@ -73,6 +73,13 @@ public static class IConfigurationServiceExtensions
             set => configurationService.Set("FfmpegPreviousVersion", value);
         }
 
+        public string Fat32WarnedDrives
+        {
+            get => configurationService.Get("Fat32WarnedDrives", string.Empty);
+
+            set => configurationService.Set("Fat32WarnedDrives", value);
+        }
+
         public string FfmpegInstalledAt
         {
             get => configurationService.Get("FfmpegInstalledAt", string.Empty);
@@ -193,14 +200,15 @@ public static class IConfigurationServiceExtensions
 
         public int MaxNumberOfActiveDownloads
         {
-            get => configurationService.Get("MaxNumberOfActiveDownloads", 5);
+            get => Math.Clamp(configurationService.Get("MaxNumberOfActiveDownloads", 2), 1, 5);
 
             set => configurationService.Set("MaxNumberOfActiveDownloads", value);
         }
 
         public bool OverwriteExistingFiles
         {
-            get => configurationService.Get("OverwriteExistingFiles", true);
+            // UniFetcher never overwrites existing files (spec section 8); new files get a numbered name instead
+            get => false;
 
             set => configurationService.Set("OverwriteExistingFiles", value);
         }
@@ -308,11 +316,57 @@ public static class IConfigurationServiceExtensions
         {
             get
             {
-                var saveFolder = configurationService.Get("SaveFolder", UserDirectories.Downloads);
-                return !Directory.Exists(saveFolder) ? UserDirectories.Downloads : saveFolder;
+                var saveFolder = configurationService.Get("SaveFolder", string.Empty);
+                if (string.IsNullOrEmpty(saveFolder))
+                {
+                    // UniFetcher default: a "UniFetcher" folder in Downloads
+                    saveFolder = Path.Combine(UserDirectories.Downloads, "UniFetcher");
+                    try
+                    {
+                        Directory.CreateDirectory(saveFolder);
+                    }
+                    catch
+                    {
+                        saveFolder = UserDirectories.Downloads;
+                    }
+                    return saveFolder;
+                }
+                if (Directory.Exists(saveFolder))
+                {
+                    return saveFolder;
+                }
+                // UniFetcher: never silently fall back to the internal drive (spec 6a).
+                // If the drive came back under another letter, follow it; otherwise keep the chosen folder and let the queue pause.
+                var driveId = configurationService.Get("SaveFolderDriveId", string.Empty);
+                var oldRoot = Path.GetPathRoot(saveFolder) ?? string.Empty;
+                if (!string.IsNullOrEmpty(driveId) && !string.IsNullOrEmpty(oldRoot))
+                {
+                    foreach (var drive in DriveInfo.GetDrives())
+                    {
+                        try
+                        {
+                            if (drive.IsReady && Services.QueueGuardService.GetVolumeSerial(drive.RootDirectory.FullName) == driveId)
+                            {
+                                var moved = drive.RootDirectory.FullName + saveFolder[oldRoot.Length..];
+                                configurationService.Set("SaveFolder", moved);
+                                return moved;
+                            }
+                        }
+                        catch
+                        {
+                            // drive went away while looking
+                        }
+                    }
+                }
+                return saveFolder;
             }
 
-            set => configurationService.Set("SaveFolder", value);
+            set
+            {
+                configurationService.Set("SaveFolder", value);
+                var root = Path.GetPathRoot(value);
+                configurationService.Set("SaveFolderDriveId", string.IsNullOrEmpty(root) ? string.Empty : Services.QueueGuardService.GetVolumeSerial(root) ?? string.Empty);
+            }
         }
 
         public bool PreviousSplitChapters
@@ -333,12 +387,12 @@ public static class IConfigurationServiceExtensions
         {
             get => configurationService.Get("VideoFormatIds", new()
             {
-                { MediaFileType.Video, Format.BestVideo.Id },
-                { MediaFileType.MP4, Format.BestVideo.Id },
-                { MediaFileType.MKV, Format.BestVideo.Id },
-                { MediaFileType.WEBM, Format.BestVideo.Id },
-                { MediaFileType.MOV, Format.BestVideo.Id },
-                { MediaFileType.AVI, Format.BestVideo.Id },
+                { MediaFileType.Video, Format.SmartVideo.Id },
+                { MediaFileType.MP4, Format.SmartVideo.Id },
+                { MediaFileType.MKV, Format.SmartVideo.Id },
+                { MediaFileType.WEBM, Format.SmartVideo.Id },
+                { MediaFileType.MOV, Format.SmartVideo.Id },
+                { MediaFileType.AVI, Format.SmartVideo.Id },
                 { MediaFileType.Audio, Format.NoneVideo.Id },
                 { MediaFileType.MP3, Format.NoneVideo.Id },
                 { MediaFileType.M4A, Format.NoneVideo.Id },

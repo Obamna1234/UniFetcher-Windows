@@ -90,6 +90,7 @@ Installing the extension in your main browser is optional. Sending a link from y
 - **Split tunnelling** (PIA → Settings → Split Tunnel):
   - If you have a list of apps that **bypass** the VPN, make sure none of these are in it: `UniFetcher.exe`, `yt-dlp.exe`, `ffmpeg.exe`, `firefox.exe`.
   - If it's set so **only listed apps use the VPN**, add all four. `UniFetcher.exe`, `yt-dlp.exe` and `ffmpeg.exe` are in `C:\Program Files\UniFetcher\Release\`; Firefox is usually `C:\Program Files\Mozilla Firefox\firefox.exe`.
+- If the VPN reconnects or PIA's kill switch blocks the internet for a moment, UniFetcher pauses the queue and carries on when the connection is back. Those downloads aren't counted as failed.
 - If a site keeps refusing you or showing "verify you are human" checks, it may be blocking VPN traffic. Switch PIA to another server and press Retry.
 
 ## Downloading to an external hard drive
@@ -99,7 +100,13 @@ Installing the extension in your main browser is optional. Sending a link from y
    - **NTFS** or **exFAT**: good.
    - **FAT32**: it can't store files over 4 GB, so long high-quality videos will fail. Reformatting to exFAT fixes this, but **reformatting erases everything on the drive** — copy your files off first.
 
-*(coming soon — stage 3)* UniFetcher will pause with "Download drive not connected" if the drive is unplugged and carry on when it's back, even if Windows gives it a different letter.
+What UniFetcher does with an external drive:
+- If the drive is unplugged or asleep, the queue **pauses** with "Download drive not connected" and carries on by itself when the drive is back. It never quietly switches to your PC's own drive.
+- It recognises the drive even if Windows gives it a different letter next time (it remembers the drive itself, not just "E:").
+- Unfinished pieces of downloads are kept on the same drive as the finished videos. If the drive is pulled out mid-download, that download goes back in the queue and continues from where it stopped.
+- If the drive gets full, the queue pauses; free up space and it carries on. Before a big batch, it warns you if the videos might not fit.
+- On a FAT32 drive it warns you once, and skips (and lists as failed) any video over 4 GB instead of failing again and again.
+- "Already downloaded" checks still work while the drive is unplugged (UniFetcher keeps that list on your PC).
 
 ## Copy an error log and report a bug
 

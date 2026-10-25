@@ -1,4 +1,4 @@
-﻿using Nickvision.Desktop.Filesystem;
+using Nickvision.Desktop.Filesystem;
 using Nickvision.Desktop.Keyring;
 using System;
 using System.Collections.Generic;
@@ -25,6 +25,10 @@ public class DownloadOptions
     public TimeFrame? TimeFrame { get; set; }
     public VideoResolution? VideoResolution { get; set; }
     public double? AudioBitrate { get; set; }
+    /// <summary>UniFetcher: "site:id" of the video, for duplicate detection. May be empty.</summary>
+    public string VideoKey { get; set; } = string.Empty;
+    /// <summary>UniFetcher: volume serial number of the download drive, so it's recognised under a different drive letter.</summary>
+    public string DriveId { get; set; } = string.Empty;
 
     public DownloadOptions(Uri url)
     {
@@ -84,10 +88,7 @@ public class DownloadOptions
             {
                 SaveFilename = SaveFilename.Substring(0, SaveFilename.Length - excessLength);
             }
-            else if (SaveFolder.Length > excessLength)
-            {
-                SaveFolder = UserDirectories.Downloads;
-            }
+            // UniFetcher: never silently move a download to another folder or drive (spec section 6a)
         }
         _isEnsuringPath = false;
     }

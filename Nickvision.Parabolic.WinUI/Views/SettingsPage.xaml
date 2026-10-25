@@ -168,10 +168,10 @@
                                     <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE896;"/>
                                 </community:SettingsCard.HeaderIcon>
 
-                                <NumberBox x:Name="NumActiveDownloads" Minimum="1" Maximum="10" SpinButtonPlacementMode="Inline" ValueChanged="Num_ValueChanged"/>
+                                <NumberBox x:Name="NumActiveDownloads" Minimum="1" Maximum="5" SpinButtonPlacementMode="Inline" ValueChanged="Num_ValueChanged"/>
                             </community:SettingsCard>
 
-                            <community:SettingsCard x:Name="RowOverwriteFiles">
+                            <community:SettingsCard x:Name="RowOverwriteFiles" Visibility="Collapsed">
                                 <community:SettingsCard.HeaderIcon>
                                     <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8E5;"/>
                                 </community:SettingsCard.HeaderIcon>

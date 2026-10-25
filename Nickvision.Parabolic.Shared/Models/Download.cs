@@ -66,6 +66,15 @@ public partial class Download : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>UniFetcher: re-reads the target path (the drive may have come back under a different letter).</summary>
+    public void RefreshFilePath()
+    {
+        if (Status == DownloadStatus.Queued)
+        {
+            FilePath = Path.Combine(Options.SaveFolder, $"{Options.SaveFilename}{Options.FileType.DotExtension}");
+        }
+    }
+
     public void Pause()
     {
         if (Status != DownloadStatus.Running)
@@ -143,6 +152,12 @@ public partial class Download : IDisposable
         if (Status != DownloadStatus.Stopped)
         {
             Status = _process?.ExitCode == 0 ? DownloadStatus.Success : DownloadStatus.Error;
+        }
+        if (Status == DownloadStatus.Success && _logBuilder.ToString().Contains("larger than max-filesize", StringComparison.OrdinalIgnoreCase))
+        {
+            // UniFetcher: FAT32 drive limit; yt-dlp skipped the file, so this is not a successful download
+            _logBuilder.AppendLine(_translationService?._("Skipped: this video is bigger than 4 GB, and the download drive (FAT32) can't store files that big.") ?? "Skipped: this video is bigger than 4 GB, and the download drive (FAT32) can't store files that big.");
+            Status = DownloadStatus.Error;
         }
         if (Status == DownloadStatus.Success)
         {

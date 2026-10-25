@@ -1,4 +1,4 @@
-﻿using Nickvision.Desktop.Globalization;
+using Nickvision.Desktop.Globalization;
 using System;
 
 namespace Nickvision.Parabolic.Shared.Models;
@@ -7,6 +7,8 @@ public class VideoResolution : IComparable<VideoResolution>, IEquatable<VideoRes
 {
     public static VideoResolution Best { get; }
     public static VideoResolution Worst { get; }
+    /// <summary>UniFetcher quality rule (see Format.SmartVideo).</summary>
+    public static VideoResolution Smart { get; }
 
     public int Width { get; }
     public int Height { get; }
@@ -15,6 +17,7 @@ public class VideoResolution : IComparable<VideoResolution>, IEquatable<VideoRes
     {
         Best = new VideoResolution(int.MaxValue, int.MaxValue);
         Worst = new VideoResolution(-1, -1);
+        Smart = new VideoResolution(-2, -2);
     }
 
     public VideoResolution() : this(int.MaxValue, int.MaxValue)
@@ -37,6 +40,10 @@ public class VideoResolution : IComparable<VideoResolution>, IEquatable<VideoRes
         else if (value == "Worst" || value == translator._("Worst"))
         {
             return Worst;
+        }
+        else if (value == "Smart: best up to 1080p" || value == translator._("Smart: best up to 1080p"))
+        {
+            return Smart;
         }
         var parts = value.Split('x');
         if (parts.Length != 2)
@@ -77,6 +84,10 @@ public class VideoResolution : IComparable<VideoResolution>, IEquatable<VideoRes
         else if (Width == -1 && Height == -1)
         {
             return translator?._("Worst") ?? "Worst";
+        }
+        else if (Width == -2 && Height == -2)
+        {
+            return translator?._("Smart: best up to 1080p") ?? "Smart: best up to 1080p";
         }
         return $"{Width}x{Height}";
     }
