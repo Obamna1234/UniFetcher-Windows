@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Send to UniFetcher</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon32.png" alt="" width="20" height="20">
+    <span>UniFetcher</span>
+  </header>
+  <main>
+    <button id="send-page" class="primary">Send this page to UniFetcher</button>
+
+    <section id="media-section" hidden>
+      <h2>Videos found on this page</h2>
+      <p class="hint">Pick one; UniFetcher shows the qualities before downloading.</p>
+      <ul id="media-list"></ul>
+    </section>
+
+    <h2>All tabs</h2>
+    <div class="row">
+      <button id="send-window">This window</button>
+      <button id="send-all">All windows</button>
+    </div>
+    <p class="hint">Opens UniFetcher's Bulk Import with every tab's link.</p>
+
+    <p id="status" role="status"></p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

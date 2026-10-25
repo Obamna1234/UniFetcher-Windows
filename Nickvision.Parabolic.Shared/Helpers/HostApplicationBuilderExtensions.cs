@@ -51,6 +51,9 @@ public static class HostApplicationBuilderExtensions
             builder.Services.AddTransient<PreferencesViewController>();
             builder.Services.AddHostedService<ConfigurationMigrationService>();
             builder.Services.AddHostedService<ToolUpdateScheduler>();
+            builder.Services.AddSingleton<InboxService>();
+            builder.Services.AddSingleton<IInboxService>(sp => sp.GetRequiredService<InboxService>());
+            builder.Services.AddHostedService(sp => sp.GetRequiredService<InboxService>());
             return builder;
         }
     }

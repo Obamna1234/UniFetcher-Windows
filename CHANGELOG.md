@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+### Browser extension (stage 5)
+- One extension for Firefox and Brave/Chrome/Edge: send this page, right-click "Download with UniFetcher", Alt+Shift+U, "Send all tabs" (this window / all windows) to Bulk Import.
+- Video detection: the toolbar button shows how many video files/streams (MP4, WebM, HLS, DASH) the page loaded; pick one to send.
+- Talks to UniFetcher through native messaging (a small helper next to UniFetcher.exe, registered per user). No internet, no data collection; starts UniFetcher if it's closed.
+- Releases sign the Firefox version for self-distribution when the Mozilla API key is set as GitHub secrets, and add it to the UniFetcher Firefox profile automatically.
+
 ### Browser sessions and VPN (stage 4)
 - New separate "UniFetcher" Firefox profile (created automatically, listed in about:profiles). Your everyday browser is never touched.
 - Downloads and fetches refused with 403/410 get a session from that profile (one visit per site) and retry; cookies are refreshed once if they stop working; never loops.

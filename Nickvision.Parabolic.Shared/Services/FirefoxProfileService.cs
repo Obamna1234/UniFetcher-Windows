@@ -56,6 +56,9 @@ public interface IFirefoxProfileService
 
     /// <summary>Forces a fresh cookie copy next time (after a site visit).</summary>
     void InvalidateSnapshot();
+
+    /// <summary>Adds the signed Send to UniFetcher extension (shipped with UniFetcher) to the UniFetcher profile, if present.</summary>
+    Task InstallExtensionAsync();
 }
 
 public class FirefoxProfileService : IFirefoxProfileService
@@ -69,6 +72,31 @@ public class FirefoxProfileService : IFirefoxProfileService
     private string? _snapshotDir;
 
     public string ProfileDirectory { get; }
+
+    private const string UserJs = """
+            // UniFetcher's own Firefox profile. Your everyday Firefox profile is separate and untouched.
+            user_pref("browser.shell.checkDefaultBrowser", false);
+            user_pref("browser.aboutwelcome.enabled", false);
+            user_pref("browser.startup.homepage_override.mstone", "ignore");
+            user_pref("startup.homepage_welcome_url", "");
+            user_pref("startup.homepage_welcome_url.additional", "");
+            user_pref("browser.startup.page", 0);
+            user_pref("browser.newtabpage.enabled", false);
+            user_pref("datareporting.policy.dataSubmissionEnabled", false);
+            user_pref("datareporting.healthreport.uploadEnabled", false);
+            user_pref("toolkit.telemetry.enabled", false);
+            user_pref("toolkit.telemetry.unified", false);
+            user_pref("app.shield.optoutstudies.enabled", false);
+            user_pref("browser.discovery.enabled", false);
+            user_pref("browser.crashReports.unsubmittedCheck.autoSubmit2", false);
+            user_pref("signon.rememberSignons", false);
+            user_pref("network.cookie.lifetimePolicy", 0);
+            user_pref("privacy.sanitize.sanitizeOnShutdown", false);
+            user_pref("privacy.clearOnShutdown.cookies", false);
+            user_pref("privacy.clearOnShutdown_v2.cookiesAndStorage", false);
+            // Let the Send to UniFetcher extension that UniFetcher puts in this profile run without a prompt
+            user_pref("extensions.autoDisableScopes", 0);
+            """;
 
     public FirefoxProfileService(ILogger<FirefoxProfileService> logger, AppInfo appInfo)
     {
@@ -126,11 +154,13 @@ public class FirefoxProfileService : IFirefoxProfileService
         {
             return false;
         }
-        if (File.Exists(Path.Combine(ProfileDirectory, "user.js")))
+        var isNew = !File.Exists(Path.Combine(ProfileDirectory, "user.js"));
+        Directory.CreateDirectory(ProfileDirectory);
+        if (!isNew)
         {
+            await File.WriteAllTextAsync(Path.Combine(ProfileDirectory, "user.js"), UserJs);
             return true;
         }
-        Directory.CreateDirectory(ProfileDirectory);
         // Register "UniFetcher" in Firefox's profile list (about:profiles) without touching the default profile
         try
         {
@@ -150,28 +180,7 @@ public class FirefoxProfileService : IFirefoxProfileService
             _logger.LogWarning($"Could not register the UniFetcher Firefox profile (it still works by folder): {e.Message}");
         }
         // Profile settings: quiet first run, no telemetry, keep cookies on disk so they can be read
-        await File.WriteAllTextAsync(Path.Combine(ProfileDirectory, "user.js"), """
-            // UniFetcher's own Firefox profile. Your everyday Firefox profile is separate and untouched.
-            user_pref("browser.shell.checkDefaultBrowser", false);
-            user_pref("browser.aboutwelcome.enabled", false);
-            user_pref("browser.startup.homepage_override.mstone", "ignore");
-            user_pref("startup.homepage_welcome_url", "");
-            user_pref("startup.homepage_welcome_url.additional", "");
-            user_pref("browser.startup.page", 0);
-            user_pref("browser.newtabpage.enabled", false);
-            user_pref("datareporting.policy.dataSubmissionEnabled", false);
-            user_pref("datareporting.healthreport.uploadEnabled", false);
-            user_pref("toolkit.telemetry.enabled", false);
-            user_pref("toolkit.telemetry.unified", false);
-            user_pref("app.shield.optoutstudies.enabled", false);
-            user_pref("browser.discovery.enabled", false);
-            user_pref("browser.crashReports.unsubmittedCheck.autoSubmit2", false);
-            user_pref("signon.rememberSignons", false);
-            user_pref("network.cookie.lifetimePolicy", 0);
-            user_pref("privacy.sanitize.sanitizeOnShutdown", false);
-            user_pref("privacy.clearOnShutdown.cookies", false);
-            user_pref("privacy.clearOnShutdown_v2.cookiesAndStorage", false);
-            """);
+        await File.WriteAllTextAsync(Path.Combine(ProfileDirectory, "user.js"), UserJs);
         _logger.LogInformation($"Created the UniFetcher Firefox profile at {ProfileDirectory}.");
         return true;
     }
@@ -200,6 +209,23 @@ public class FirefoxProfileService : IFirefoxProfileService
             _logger.LogError($"Could not open the UniFetcher Firefox profile: {e.Message}");
             return false;
         }
+    }
+
+    public async Task InstallExtensionAsync()
+    {
+        var source = Path.Combine(Desktop.System.Environment.ExecutingDirectory, "extension", "unifetcher-firefox.xpi");
+        if (!File.Exists(source) || !await EnsureProfileAsync())
+        {
+            return;
+        }
+        var target = Path.Combine(ProfileDirectory, "extensions", $"{InboxService.FirefoxExtensionId}.xpi");
+        if (File.Exists(target) && new FileInfo(target).Length == new FileInfo(source).Length && File.GetLastWriteTimeUtc(target) >= File.GetLastWriteTimeUtc(source))
+        {
+            return;
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        File.Copy(source, target, true);
+        _logger.LogInformation("Added the Send to UniFetcher extension to the UniFetcher Firefox profile.");
     }
 
     public async Task<bool> OpenWindowAsync()

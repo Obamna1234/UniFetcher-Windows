@@ -10,9 +10,9 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 | 1 | Fork setup, rename, credits, remove external links, workflows, `.gitignore`, `HOW_TO.md`, `STATUS.md` | Done (build passing) |
 | 2 | yt-dlp and ffmpeg updating, auto-retry | Done (build passing) |
 | 3 | Queue improvements, pause on connection loss, external drive, duplicate detection, quality preset, batch downloads | Done — waiting for green build |
-| 4 | Dedicated "UniFetcher" Firefox profile sessions, VPN handling | Done — waiting for green build |
-| 5 | Browser extension (native messaging, video detection, send all tabs, Firefox signing) | Next |
-| 6 | Bulk import (paste, file, drag-and-drop, send all tabs, end report) | To do |
+| 4 | Dedicated "UniFetcher" Firefox profile sessions, VPN handling | Done (build passing) |
+| 5 | Browser extension (native messaging, video detection, send all tabs, Firefox signing) | Done — waiting for green build |
+| 6 | Bulk import (paste, file, drag-and-drop, send all tabs, end report) | Next |
 | 7 | Organising downloads, incognito, discreet notifications, clear history | To do |
 
 ## Decisions so far
@@ -26,7 +26,8 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 - Parabolic's "Overwrite existing files" setting is forced off and hidden; aria2c settings are hidden.
 - Sessions: `FirefoxProfileService` (profile in `%APPDATA%\UniFetcher\FirefoxProfile`, registered as "UniFetcher" in profiles.ini) and `SiteSessionService` (table `unifetcher_sessions`). yt-dlp reads a private, checkpointed copy of the profile's cookies.sqlite via `--cookies-from-browser firefox:<copy>`, so the UniFetcher window doesn't need closing; it's closed only if the file can't be copied. Firefox session-only cookies aren't stored on disk, so they can't be used.
 - Parabolic's "Cookies from Browser" setting: `None` now means "UniFetcher profile".
+- Extension: one source in `extension/src` + two manifests; `scripts/build-extension.ps1` builds both. Chromium ID is fixed by the public `key` in `manifest.chrome.json` (`iofbbjgpimljhofeflakhkjknpelglob`); Firefox ID `unifetcher-extension@obamna1234.github.io`. Native host `com.unifetcher.host` = `UniFetcher.NativeHost` (AOT console app) → named pipe `UniFetcher.Inbox.<user>` → `InboxService`. Registration is per-user (HKCU) on every app start.
 - Test builds are versioned `0.0.0-dev.<run>`; releases take their version from the tag.
 
 ## Waiting on you
-- Nothing right now.
+- Optional, for a signed Firefox extension: create a Mozilla API key and add GitHub secrets `AMO_JWT_ISSUER` and `AMO_JWT_SECRET` (steps in HOW_TO.md → "Setting up Firefox signing").

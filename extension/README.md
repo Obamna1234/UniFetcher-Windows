@@ -1,9 +1,7 @@
-# UniFetcher browser extension
+# Send to UniFetcher (browser extension)
 
-Sends links from Firefox or Brave/Chrome to the UniFetcher app on the same PC. It collects nothing and sends nothing anywhere except to UniFetcher. Based on the Parabolic extension by NickvisionApps & OwlRoyalty.
+One codebase for Firefox and Brave/Chrome/Edge. `src/` holds the shared files; `manifest.firefox.json` and `manifest.chrome.json` differ only where the browsers do. `scripts/build-extension.ps1` builds both into separate folders (the release workflow zips them and signs the Firefox one).
 
-- Click the toolbar button to send the current page.
-- Right-click a link → **Open link in UniFetcher**.
-- `Alt+P` sends the current page.
+It talks only to UniFetcher on the same PC via native messaging (`com.unifetcher.host`), sends only links, and collects nothing. Based on the Parabolic extension by NickvisionApps & OwlRoyalty.
 
-Installing: see [HOW_TO.md](../HOW_TO.md#install-the-browser-extension). Release zips are built automatically from the `firefox` and `chrome` folders.
+Install steps: see [HOW_TO.md](../HOW_TO.md#install-the-browser-extension).

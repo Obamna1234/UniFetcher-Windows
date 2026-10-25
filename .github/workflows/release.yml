@@ -9,8 +9,41 @@ permissions:
 env:
   PROJECT_NAME: Nickvision.Parabolic.WinUI
 jobs:
+  extension:
+    # Builds the browser extension and, if the Mozilla API key is set up (see HOW_TO.md), signs the Firefox
+    # version for self-distribution ("unlisted": it is not published on addons.mozilla.org).
+    name: "Browser extension"
+    runs-on: ubuntu-latest
+    env:
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: "Build extension"
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart("v")
+          scripts/build-extension.ps1 -Version $v -OutDir ext
+      - name: "Sign Firefox extension"
+        if: env.AMO_JWT_ISSUER != '' && env.AMO_JWT_SECRET != ''
+        run: |
+          npx --yes web-ext@8 sign --source-dir ext/firefox --artifacts-dir ext/signed --channel unlisted \
+            --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET" --approval-timeout 1200000
+          mv ext/signed/*.xpi ext/unifetcher-firefox.xpi
+      - name: "No signing key yet"
+        if: env.AMO_JWT_ISSUER == '' || env.AMO_JWT_SECRET == ''
+        run: echo "::warning::Firefox extension not signed (AMO_JWT_ISSUER / AMO_JWT_SECRET secrets not set). See HOW_TO.md."
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension
+          path: ext/unifetcher-firefox.xpi
+          if-no-files-found: ignore
   build:
     name: "Build (${{ matrix.variant.arch }})"
+    needs: extension
     strategy:
       matrix:
         variant:
@@ -56,9 +89,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           dotnet publish ${{ env.PROJECT_NAME }} -c Release --no-restore --runtime win-${{ matrix.variant.arch }} /p:Platform=${{ matrix.variant.arch }} /p:Version=$("${{ env.VERSION }}".Split('-')[0]) /p:InformationalVersion=${{ env.VERSION }}
           if ($LASTEXITCODE -ne 0) { exit 1 }
+          dotnet publish UniFetcher.NativeHost -c Release --runtime win-${{ matrix.variant.arch }} -o "${{ env.PROJECT_NAME }}/bin/${{ matrix.variant.arch }}/Release/net10.0-windows10.0.19041.0/win-${{ matrix.variant.arch }}/publish"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension
+          path: signed-extension
+        continue-on-error: true
       - name: "Package"
         shell: pwsh
-        run: scripts/package.ps1 -Arch ${{ matrix.variant.arch }} -Version ${{ env.VERSION }} -PublishDir "${{ env.PROJECT_NAME }}/bin/${{ matrix.variant.arch }}/Release/net10.0-windows10.0.19041.0/win-${{ matrix.variant.arch }}/publish" -OutDir out
+        run: scripts/package.ps1 -Arch ${{ matrix.variant.arch }} -Version ${{ env.VERSION }} -FirefoxXpi signed-extension/unifetcher-firefox.xpi -PublishDir "${{ env.PROJECT_NAME }}/bin/${{ matrix.variant.arch }}/Release/net10.0-windows10.0.19041.0/win-${{ matrix.variant.arch }}/publish" -OutDir out
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.variant.arch }}
@@ -72,6 +112,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
+          pattern: release-*
           path: dist
           merge-multiple: true
       - name: "Create or fill in the release"

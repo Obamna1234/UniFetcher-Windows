@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Send to UniFetcher",
+  "short_name": "UniFetcher",
+  "version": "0.0.0",
+  "description": "Send pages, links, detected videos or all your tabs to the UniFetcher app on this PC. Collects nothing; talks only to UniFetcher.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArulriZU2clvzRlD7Nu+iAU6YUX1XMG6DpXHNFUNe/HFIz91yEqssQTudeFmrGeCVwlOFOPxO32+T6ny9S+K6ZmTHq62DYEewUMt5WUYWq2N2keBGPhGIGk/rsWwlx2++Ci7FR7GnKXuf5qt3orbzWAy5H2wDdddw9OCW+PrH0RT0XY6Cnxq9SBBks2PMZYQDxOqwZVQv2wxwDPJ1ptPbLwJMpokua50hQf7lMQ9JPmQ1ICKDjXLt1aQEeDyv8WAXCNGueufsbag2JFBLhh0jp8xSmWO3tY88Pz+4dH3qIWVWJgERquQfQn1i7ZAZP3FJkUKeYp44vhcMDLIjpRg4QwIDAQAB",
+  "permissions": ["nativeMessaging", "contextMenus", "tabs", "webRequest", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "Send to UniFetcher",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "38": "icons/icon38.png" }
+  },
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "commands": {
+    "send-page": {
+      "suggested_key": { "default": "Alt+Shift+U" },
+      "description": "Send this page to UniFetcher"
+    }
+  }
+}

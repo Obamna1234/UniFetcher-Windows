@@ -35,6 +35,8 @@ public sealed partial class MainWindow : Window
     private readonly ITranslationService _translationService;
     private readonly Dictionary<int, DownloadRow> _downloadRows;
     private RoutedEventHandler? _notificationClickHandler;
+    // Only one dialog can be open at a time; links arriving from the extension wait their turn
+    private readonly System.Threading.SemaphoreSlim _dialogGate = new System.Threading.SemaphoreSlim(1, 1);
 
     public MainWindow(IServiceProvider serviceProvider, MainWindowController controller, AppInfo appInfo, IEventsService eventsService, ITranslationService translationService)
     {
@@ -75,6 +77,7 @@ public sealed partial class MainWindow : Window
         eventsService.DownloadStopped += (sender, e) => DispatcherQueue.TryEnqueue(() => Controller_DownloadStopped(sender, e));
         eventsService.DownloadStartedFromQueue += (sender, e) => DispatcherQueue.TryEnqueue(() => Controller_DownloadStartedFromQueue(sender, e));
         eventsService.DownloadRetired += (sender, e) => DispatcherQueue.TryEnqueue(() => Controller_DownloadRetired(sender, e));
+        _controller.LinksFromExtension += (sender, e) => DispatcherQueue.TryEnqueue(async () => await Controller_LinksFromExtensionAsync(e));
         eventsService.DownloadRequested += async (s, args) => await AddDownloadAsync(args.Url);
         // Translations
         AppWindow.Title = _appInfo.ShortName;
@@ -529,6 +532,35 @@ public sealed partial class MainWindow : Window
         InfoBar.IsOpen = false;
         await _controller.YtdlpUpdateAsync(progress);
         progress.ProgressChanged -= UpdateProgress_Changed;
+    }
+
+    /// <summary>UniFetcher: a page/link/video or all tabs sent from the browser extension.</summary>
+    private async Task Controller_LinksFromExtensionAsync(LinksReceivedEventArgs e)
+    {
+        Activate();
+        if (e.IsBulk || e.Urls.Count > 1)
+        {
+            await OpenBulkImportAsync(e.Urls);
+            return;
+        }
+        await _dialogGate.WaitAsync();
+        try
+        {
+            await AddDownloadAsync(e.Urls[0]);
+        }
+        finally
+        {
+            _dialogGate.Release();
+        }
+    }
+
+    /// <summary>Opens Bulk Import with these links (stage 6). Until then, they're added one by one.</summary>
+    private async Task OpenBulkImportAsync(IReadOnlyList<Uri> urls)
+    {
+        InfoBar.Message = _translationService._("Received {0} links. Bulk Import is coming in the next update.", urls.Count);
+        InfoBar.Severity = InfoBarSeverity.Informational;
+        InfoBar.IsOpen = true;
+        await Task.CompletedTask;
     }
 
     private async Task AddDownloadAsync(Uri? uri)

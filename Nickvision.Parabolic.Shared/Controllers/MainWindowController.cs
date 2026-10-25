@@ -32,12 +32,15 @@ public class MainWindowController
     private readonly IUpdaterService _updaterService;
     private readonly IToolUpdateService _toolUpdateService;
     private readonly ISiteSessionService _sessions;
+
+    /// <summary>UniFetcher: links sent from the browser extension (raised on a background thread).</summary>
+    public event EventHandler<LinksReceivedEventArgs>? LinksFromExtension;
     private readonly IYtdlpExecutableService _ytdlpExecutableService;
     private AppVersion _latestAppVersion;
     private AppVersion _latestYtdlpVersion;
     private AppVersion _latestDenoVersion;
 
-    public MainWindowController(ILogger<MainWindowController> logger, AppInfo appInfo, IArgumentsService argumentsService, IConfigurationService configurationService, IDatabaseService databaseService, IDenoExecutableService denoExecutableService, IDownloadService downloadService, INotificationService notificationService, IPowerService powerService, IRecoveryService recoveryService, ITranslationService translationService, IUpdaterService updaterService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IYtdlpExecutableService ytdlpExecutableService)
+    public MainWindowController(ILogger<MainWindowController> logger, AppInfo appInfo, IArgumentsService argumentsService, IConfigurationService configurationService, IDatabaseService databaseService, IDenoExecutableService denoExecutableService, IDownloadService downloadService, INotificationService notificationService, IPowerService powerService, IRecoveryService recoveryService, ITranslationService translationService, IUpdaterService updaterService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IInboxService inboxService, IYtdlpExecutableService ytdlpExecutableService)
     {
         _logger = logger;
         _appInfo = appInfo;
@@ -53,6 +56,7 @@ public class MainWindowController
         _updaterService = updaterService;
         _toolUpdateService = toolUpdateService;
         _sessions = sessions;
+        inboxService.LinksReceived += (_, e) => LinksFromExtension?.Invoke(this, e);
         _toolUpdateService.UpdateFound += ToolUpdateService_UpdateFound;
         _ytdlpExecutableService = ytdlpExecutableService;
         _latestAppVersion = appInfo.Version!;
