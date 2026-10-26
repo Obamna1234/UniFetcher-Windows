@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+### Documents and temporary files
+- Bulk Import reads links from documents: PDF, Word (.docx/.doc), OpenDocument (.odt), RTF, e-mails (.eml), saved web pages (.mht), EPUB, Excel/PowerPoint, .url shortcuts and Samsung Notes (.sdocx, best effort). Works with Import from file and drag-and-drop.
+- New setting "Temporary files folder" (default: next to the download). The queue pauses if that folder's drive is missing or full.
+
 ### Organising and privacy (stage 7)
 - Downloads Library (View menu): list or thumbnail grid, search, sort by date/size/duration/name/site, source site and original link, Open file, Show in folder, Copy link, Download again, Remove (file kept unless "Also delete file" is ticked).
 - Optional subfolder per site.

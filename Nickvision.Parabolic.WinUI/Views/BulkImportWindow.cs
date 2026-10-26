@@ -89,7 +89,7 @@ public sealed class BulkImportWindow : Window
     {
         _jobId = null;
         var panel = Page(_t._("Bulk Import"));
-        panel.Children.Add(Text(_t._("Paste links below (one per line, or any text with links in it), open an exported file, or drag a file onto this window. Works with bookmarks HTML exports, Firefox bookmark backups (JSON), tab-manager exports (JSON, CSV, OneTab) and plain text."), wrap: true));
+        panel.Children.Add(Text(_t._("Paste links below (one per line, or any text with links in it), open an exported file, or drag a file onto this window. Works with plain text, bookmarks HTML exports, Firefox bookmark backups (JSON), tab-manager exports (JSON, CSV, OneTab) and documents: PDF, Word, OpenDocument, RTF, e-mails (.eml), EPUB and Samsung Notes files."), wrap: true));
         var box = new TextBox
         {
             AcceptsReturn = true,
@@ -115,7 +115,7 @@ public sealed class BulkImportWindow : Window
         var open = new Button { Content = _t._("Import from file…") };
         open.Click += async (_, _) =>
         {
-            var picker = new FileOpenPicker(AppWindow.Id) { SuggestedStartLocation = PickerLocationId.Downloads, FileTypeFilter = { ".txt", ".html", ".htm", ".json", ".csv", "*" } };
+            var picker = new FileOpenPicker(AppWindow.Id) { SuggestedStartLocation = PickerLocationId.Downloads, FileTypeFilter = { "*", ".txt", ".pdf", ".docx", ".doc", ".odt", ".rtf", ".sdocx", ".eml", ".mht", ".html", ".htm", ".json", ".csv", ".md", ".epub", ".xlsx", ".pptx", ".url" } };
             var file = await picker.PickSingleFileAsync();
             if (file is not null)
             {

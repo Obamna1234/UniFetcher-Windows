@@ -40,7 +40,21 @@ public class BulkImportController
 
     public async Task<BulkPlan> PlanFromTextAsync(string text, string? fileName = null) => await _bulkImportService.PlanAsync(LinkImportParser.Parse(text, fileName));
 
-    public async Task<BulkPlan> PlanFromFileAsync(string path) => await PlanFromTextAsync(await File.ReadAllTextAsync(path), path);
+    /// <summary>Reads links from any supported file: text lists and exports, or documents (PDF, Word, Samsung Notes, e-mail...).</summary>
+    public async Task<BulkPlan> PlanFromFileAsync(string path)
+    {
+        var (text, format, bestEffort) = await DocumentTextExtractor.ExtractAsync(path);
+        if (string.IsNullOrEmpty(format))
+        {
+            // A text list or export: let the parser recognise bookmarks HTML, JSON, CSV, OneTab...
+            return await PlanFromTextAsync(text, path);
+        }
+        var parsed = LinkImportParser.Parse(text);
+        // Text around links in a document isn't a title; the real title comes from the site later
+        var links = parsed.Links.Select(x => new ImportedLink(x.Url, string.Empty)).ToList();
+        var label = bestEffort ? _translationService._("{0} (best-effort scan)", _translationService._(format)) : _translationService._(format);
+        return await _bulkImportService.PlanAsync(new ParsedLinks(label, links, parsed.NotWebPages));
+    }
 
     public async Task<BulkPlan> PlanFromLinksAsync(IReadOnlyList<Uri> urls) => await _bulkImportService.PlanAsync(new ParsedLinks(_translationService._("Browser tabs"), urls.Select(x => new ImportedLink(x, string.Empty)).ToList(), []));
 

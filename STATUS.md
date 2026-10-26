@@ -29,10 +29,12 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 - Extension: one source in `extension/src` + two manifests; `scripts/build-extension.ps1` builds both. Chromium ID is fixed by the public `key` in `manifest.chrome.json` (`iofbbjgpimljhofeflakhkjknpelglob`); Firefox ID `unifetcher-extension@obamna1234.github.io`. Native host `com.unifetcher.host` = `UniFetcher.NativeHost` (AOT console app) → named pipe `UniFetcher.Inbox.<user>` → `InboxService`. Registration is per-user (HKCU) on every app start.
 - Bulk Import: `LinkImportParser` (formats), `BulkImportService` (tables `unifetcher_bulk_jobs` / `unifetcher_bulk_items`, background worker that keeps the download queue topped up one fetch at a time), `BulkImportWindow` (built in code). Bulk downloads are tagged with `DownloadOptions.BulkItemId`, are not added to Parabolic's crash recovery (Bulk Import resumes them itself), and report their final result through `IDownloadService.DownloadFinished`.
 - Downloads Library is `LibraryWindow` (built in code) over Parabolic's history table; it replaces Parabolic's History dialog in the View menu. Windows notifications use the Windows App SDK `AppNotificationManager` (`WindowsNotifier`).
+- Temporary files: `--paths temp:` is the download folder unless `TempFolder` is set (then `<TempFolder>\UniFetcher temp`). `QueueGuardService` pauses with `TempMissing` / `DriveFull` for it. Fetching info (no video data) still uses Windows' temp folder.
+- Documents for Bulk Import: `DocumentTextExtractor` (PDF via PdfPig 0.1.9 + raw /URI scan incl. compressed streams; zip-based Office/ODF/EPUB/Samsung Notes; RTF; EML/MHT with quoted-printable and base64; UTF-8/UTF-16 scan of other binaries) → `LinkImportParser`.
 - Test builds are versioned `0.0.0-dev.<run>`; releases take their version from the tag.
 
 ## Next
 - All 7 stages are built. Next: test on your PC, then make the first release by pushing a version tag (HOW_TO.md → "Release a new version").
 
 ## Waiting on you
-- Optional, for a signed Firefox extension: create a Mozilla API key and add GitHub secrets `AMO_JWT_ISSUER` and `AMO_JWT_SECRET` (steps in HOW_TO.md → "Setting up Firefox signing").
+- Nothing. (Firefox extension signing was skipped: you said the browser extension isn't needed. It still builds unsigned; nothing else depends on it.)

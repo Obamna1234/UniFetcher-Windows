@@ -131,6 +131,11 @@ Hand UniFetcher a long list once and let it work through it.
 
 Formats it understands by itself: links one per line or mixed into text (e.g. copied from your phone), bookmarks HTML exports, Firefox bookmark backups (`.json`), and tab-manager exports (JSON, CSV, OneTab).
 
+**Documents work too**, so you can keep your links in a file instead of copying and pasting between devices: **PDF**, **Word** (`.docx`, and older `.doc`), **OpenDocument** (`.odt`), **RTF**, **e-mails** (`.eml`), saved web pages (`.mht`), **EPUB**, Excel/PowerPoint files, web shortcuts (`.url`) and **Samsung Notes**. UniFetcher finds every web link in the file, both clickable links and links just typed as text.
+- **Samsung Notes**: best is to export the note as **PDF** or **Microsoft Word** (in the note: **⋮ → Save as file**), or share it as **Text**. A `.sdocx` file also works most of the time, but Samsung doesn't publish that format, so UniFetcher reads it on a best-effort basis.
+- A PDF that's just a scan or photo of a page has no text in it, so links in it can't be read.
+- Getting the file onto your PC: email it to yourself, or save it in a cloud folder you can reach from both (e.g. OneDrive, Google Drive), or copy it over a USB cable.
+
 Exporting tabs without the extension:
 - **Firefox**: right-click any tab → **Select All Tabs**, right-click again → **Bookmark Tabs…** → save into a new folder. Then **Bookmarks → Manage Bookmarks** (Ctrl+Shift+O) → **Import and Backup → Export Bookmarks to HTML…**.
 - **Brave / Chrome / Edge**: **Ctrl+Shift+D** (bookmark all tabs) → new folder. Then open the bookmark manager (Ctrl+Shift+O) → **⋮** → **Export bookmarks**.
@@ -167,6 +172,8 @@ Each link ends up as one of:
 2. Check the drive's format: open **File Explorer → This PC**, right-click the drive → **Properties**, and look at **File system**.
    - **NTFS** or **exFAT**: good.
    - **FAT32**: it can't store files over 4 GB, so long high-quality videos will fail. Reformatting to exFAT fixes this, but **reformatting erases everything on the drive** — copy your files off first.
+
+**Where unfinished downloads are kept (temporary files):** by default, right next to the finished video, in the same folder on the same drive. So with the download folder on your external drive, the internal drive isn't used for videos at all (UniFetcher's own settings and history stay on the PC, which is tiny). If the download drive is short of space you can pick another place: Settings → **Downloads** → **Temporary files folder** → **Choose…** (and **Use default** to go back). UniFetcher puts a `UniFetcher temp` folder inside the one you choose. Moving the finished video from a different drive takes longer, and if that drive is unplugged or full the queue pauses rather than using another drive.
 
 What UniFetcher does with an external drive:
 - If the drive is unplugged or asleep, the queue **pauses** with "Download drive not connected" and carries on by itself when the drive is back. It never quietly switches to your PC's own drive.

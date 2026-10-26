@@ -171,7 +171,7 @@ public static partial class LinkImportParser
         {
             return;
         }
-        if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) && !string.IsNullOrEmpty(uri.Host))
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) && !string.IsNullOrEmpty(uri.Host) && (uri.Host.Contains('.') || uri.Host == "localhost"))
         {
             links.Add(new ImportedLink(uri, title));
         }
