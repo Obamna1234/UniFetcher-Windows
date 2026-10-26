@@ -21,7 +21,9 @@ public enum QueuePauseReason
     None,
     NoInternet,
     DriveMissing,
-    DriveFull
+    DriveFull,
+    /// <summary>The temporary files folder you chose isn't available (drive unplugged).</summary>
+    TempMissing
 }
 
 /// <summary>Why a download failed, as far as the queue is concerned.</summary>
@@ -155,7 +157,18 @@ public partial class QueueGuardService : IQueueGuardService, IDisposable
             Pause(QueuePauseReason.DriveFull, options);
             return false;
         }
-        if (PauseReason is QueuePauseReason.DriveMissing or QueuePauseReason.DriveFull)
+        // UniFetcher: the temporary files folder (if you chose one) must be there and have room too; never fall back to another drive
+        if (!TempOk())
+        {
+            Pause(QueuePauseReason.TempMissing, options);
+            return false;
+        }
+        if (TempFree() is long tempFree && tempFree < MinimumFreeBytes)
+        {
+            Pause(QueuePauseReason.DriveFull, options);
+            return false;
+        }
+        if (PauseReason is QueuePauseReason.DriveMissing or QueuePauseReason.DriveFull or QueuePauseReason.TempMissing)
         {
             // This download's drive is fine, but another one isn't: keep the queue paused until the monitor says otherwise
             return false;
@@ -172,7 +185,12 @@ public partial class QueueGuardService : IQueueGuardService, IDisposable
             Pause(QueuePauseReason.DriveMissing, options);
             return FailureKind.DriveMissing;
         }
-        if (LooksLikeDiskFull(log) || (FreeSpace(root) is long free && free < MinimumFreeBytes))
+        if (!TempOk())
+        {
+            Pause(QueuePauseReason.TempMissing, options);
+            return FailureKind.DriveMissing;
+        }
+        if (LooksLikeDiskFull(log) || (FreeSpace(root) is long free && free < MinimumFreeBytes) || (TempFree() is long tempFree && tempFree < MinimumFreeBytes))
         {
             Pause(QueuePauseReason.DriveFull, options);
             return FailureKind.DriveFull;
@@ -239,6 +257,7 @@ public partial class QueueGuardService : IQueueGuardService, IDisposable
         {
             QueuePauseReason.NoInternet => _translationService._("No internet connection. Downloads are paused and will carry on by themselves when the connection is back."),
             QueuePauseReason.DriveMissing => _translationService._("Download drive not connected ({0}). Downloads are paused and will carry on when the drive is plugged back in.", Path.GetPathRoot(options.SaveFolder) ?? options.SaveFolder),
+            QueuePauseReason.TempMissing => _translationService._("The temporary files folder isn't available ({0}). Downloads are paused and will carry on when its drive is back. You can change it in Settings → Downloads.", _configurationService.TempFolder),
             _ => _translationService._("The download drive is full ({0}). Downloads are paused; free up some space and they will carry on.", Path.GetPathRoot(options.SaveFolder) ?? options.SaveFolder)
         };
         _logger.LogWarning($"Queue paused: {reason}");
@@ -262,7 +281,8 @@ public partial class QueueGuardService : IQueueGuardService, IDisposable
         {
             QueuePauseReason.NoInternet => await IsInternetUpAsync(_probeHost),
             QueuePauseReason.DriveMissing => DriveIsBack(blocked),
-            QueuePauseReason.DriveFull => FreeSpace(blocked.SaveFolder) is long free && free >= MinimumFreeBytes,
+            QueuePauseReason.DriveFull => FreeSpace(blocked.SaveFolder) is long free && free >= MinimumFreeBytes && (TempFree() is not long tempFree || tempFree >= MinimumFreeBytes),
+            QueuePauseReason.TempMissing => TempOk(),
             _ => true
         };
         if (!ok)
@@ -283,6 +303,23 @@ public partial class QueueGuardService : IQueueGuardService, IDisposable
         _logger.LogInformation($"Queue resumed after {reason}.");
         _notificationService.Send(new AppNotification(reason == QueuePauseReason.NoInternet ? _translationService._("Connection is back. Downloads have resumed.") : _translationService._("Download drive is ready. Downloads have resumed."), NotificationSeverity.Success));
         Resumed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private bool TempOk()
+    {
+        var temp = _configurationService.TempFolder;
+        if (string.IsNullOrEmpty(temp))
+        {
+            return true;
+        }
+        var root = Path.GetPathRoot(temp);
+        return !string.IsNullOrEmpty(root) && Directory.Exists(root);
+    }
+
+    private long? TempFree()
+    {
+        var temp = _configurationService.TempFolder;
+        return string.IsNullOrEmpty(temp) ? null : FreeSpace(temp);
     }
 
     private bool DriveIsBack(DownloadOptions options)

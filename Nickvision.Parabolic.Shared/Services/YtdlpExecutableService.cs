@@ -136,6 +136,22 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
         return arguments;
     }
 
+    /// <summary>
+    /// UniFetcher: where temporary and partial files go. Default: the download folder itself (same drive as the finished file).
+    /// If you chose a temp folder in Settings, a "UniFetcher temp" folder inside it.
+    /// </summary>
+    private string TempPathFor(DownloadOptions downloadOptions)
+    {
+        var chosen = _configurationService.TempFolder;
+        if (string.IsNullOrEmpty(chosen))
+        {
+            return downloadOptions.SaveFolder;
+        }
+        var path = Path.Combine(chosen, "UniFetcher temp");
+        Directory.CreateDirectory(path);
+        return path;
+    }
+
     public Process GetDownloadProcess(DownloadOptions downloadOptions)
     {
         var pluginsDir = Path.Combine(Desktop.System.Environment.ExecutingDirectory, "plugins");
@@ -168,7 +184,7 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
             "--paths",
             downloadOptions.SaveFolder,
             "--paths",
-            $"temp:{downloadOptions.SaveFolder}",
+            $"temp:{TempPathFor(downloadOptions)}",
             "--output",
             $"{downloadOptions.SaveFilename}.%(ext)s",
             "--output",

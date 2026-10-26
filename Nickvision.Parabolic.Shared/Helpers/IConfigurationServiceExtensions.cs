@@ -24,6 +24,14 @@ public static class IConfigurationServiceExtensions
             set => configurationService.Set("SubfolderPerSite", value);
         }
 
+        /// <summary>UniFetcher: folder you chose for temporary/partial files; empty = next to the download (default).</summary>
+        public string TempFolder
+        {
+            get => configurationService.Get("TempFolder", string.Empty);
+
+            set => configurationService.Set("TempFolder", value);
+        }
+
         public bool Incognito
         {
             get => configurationService.Get("Incognito", false);

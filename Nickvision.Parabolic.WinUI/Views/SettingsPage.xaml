@@ -205,6 +205,18 @@
                                 <NumberBox x:Name="NumActiveDownloads" Minimum="1" Maximum="5" SpinButtonPlacementMode="Inline" ValueChanged="Num_ValueChanged"/>
                             </community:SettingsCard>
 
+                            <community:SettingsCard x:Name="RowTempFolder">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8B7;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock x:Name="LblTempFolder" VerticalAlignment="Center" MaxWidth="320" TextTrimming="CharacterEllipsis"/>
+                                    <Button x:Name="BtnChooseTempFolder" Click="ChooseTempFolder"/>
+                                    <Button x:Name="BtnResetTempFolder" Click="ResetTempFolder"/>
+                                </StackPanel>
+                            </community:SettingsCard>
+
                             <community:SettingsCard x:Name="RowSubfolderPerSite">
                                 <community:SettingsCard.HeaderIcon>
                                     <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8B7;"/>

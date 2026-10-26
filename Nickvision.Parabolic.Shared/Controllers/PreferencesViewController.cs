@@ -521,6 +521,14 @@ public class PreferencesViewController
         set => _configurationService.SubfolderPerSite = value;
     }
 
+    /// <summary>Folder for temporary/partial files; empty = next to the download.</summary>
+    public string TempFolder
+    {
+        get => _configurationService.TempFolder;
+
+        set => _configurationService.TempFolder = value;
+    }
+
     public bool Incognito
     {
         get => _configurationService.Incognito;
