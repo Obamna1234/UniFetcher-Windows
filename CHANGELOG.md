@@ -3,6 +3,7 @@
 ## Unreleased
 ### Documents and temporary files
 - Bulk Import reads links from documents: PDF, Word (.docx/.doc), OpenDocument (.odt), RTF, e-mails (.eml), saved web pages (.mht), EPUB, Excel/PowerPoint, .url shortcuts and Samsung Notes (.sdocx, best effort). Works with Import from file and drag-and-drop.
+- Numbered link lists ("1. https://…"), links typed with backslashes, and long links wrapped onto the next line in PDFs are all read correctly.
 - New setting "Temporary files folder" (default: next to the download). The queue pauses if that folder's drive is missing or full.
 
 ### Organising and privacy (stage 7)

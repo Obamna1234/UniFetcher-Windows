@@ -21,6 +21,9 @@ public static partial class LinkImportParser
     public static ParsedLinks Parse(string text, string? fileName = null)
     {
         text ??= string.Empty;
+        // Numbered lists ("1. https://...", "2) https://...", as when sharing all tabs into Samsung Notes) need nothing special:
+        // links are found anywhere in a line. Links typed with backslashes ("https:\\example.com\...") are fixed to normal slashes.
+        text = BackslashLinkRegex().Replace(text, m => m.Groups[1].Value + "://" + m.Groups[2].Value.Replace('\\', '/'));
         var trimmed = text.TrimStart('﻿', ' ', '\t', '\r', '\n');
         var extension = System.IO.Path.GetExtension(fileName ?? string.Empty).ToLowerInvariant();
         var links = new List<ImportedLink>();
@@ -193,6 +196,10 @@ public static partial class LinkImportParser
 
     [GeneratedRegex(@"<[^>]+>")]
     private static partial Regex TagRegex();
+
+    // "https:\\host\path" -> group 1 = scheme, group 2 = the rest of the link
+    [GeneratedRegex(@"\b(https?):\\\\([^\s<>""'|]+)", RegexOptions.IgnoreCase)]
+    private static partial Regex BackslashLinkRegex();
 
     [GeneratedRegex(@"https?://[^\s<>""'|]+", RegexOptions.IgnoreCase)]
     private static partial Regex UrlRegex();

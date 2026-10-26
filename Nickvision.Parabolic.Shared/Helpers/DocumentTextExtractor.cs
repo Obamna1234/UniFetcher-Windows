@@ -91,9 +91,53 @@ public static partial class DocumentTextExtractor
             using var document = UglyToad.PdfPig.PdfDocument.Open(path);
             foreach (var page in document.GetPages())
             {
-                foreach (var word in page.GetWords())
+                var words = page.GetWords().ToList();
+                if (words.Count == 0)
                 {
-                    builder.Append(word.Text).Append(' ');
+                    continue;
+                }
+                // Group words into lines by their height on the page
+                var lines = new List<List<UglyToad.PdfPig.Content.Word>>();
+                foreach (var word in words)
+                {
+                    var last = lines.Count > 0 ? lines[^1] : null;
+                    var lineHeight = Math.Max(1.0, word.BoundingBox.Height);
+                    if (last is null || Math.Abs(last[^1].BoundingBox.Bottom - word.BoundingBox.Bottom) > lineHeight * 0.5)
+                    {
+                        lines.Add(new List<UglyToad.PdfPig.Content.Word> { word });
+                    }
+                    else
+                    {
+                        last.Add(word);
+                    }
+                }
+                var rightEdge = words.Max(w => w.BoundingBox.Right);
+                var leftEdge = words.Min(w => w.BoundingBox.Left);
+                var tolerance = Math.Max(6.0, (rightEdge - leftEdge) * 0.04);
+                for (var i = 0; i < lines.Count; i++)
+                {
+                    var line = lines[i];
+                    for (var j = 0; j < line.Count; j++)
+                    {
+                        builder.Append(line[j].Text);
+                        var isLastWord = j == line.Count - 1;
+                        if (!isLastWord)
+                        {
+                            builder.Append(' ');
+                            continue;
+                        }
+                        // A long link that reaches the right edge of the page was wrapped onto the next line by the
+                        // exporter (e.g. Samsung Notes → PDF): join the pieces back together. A new numbered item
+                        // ("2.", "3)") or a new link on the next line means it wasn't wrapped.
+                        var next = i + 1 < lines.Count ? lines[i + 1][0].Text : null;
+                        var wrapped = next is not null
+                            && LinkRegex().IsMatch(line[j].Text)
+                            && line[j].BoundingBox.Right >= rightEdge - tolerance
+                            && !NumberedItemRegex().IsMatch(next)
+                            && !next.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                            && LinkContinuationRegex().IsMatch(next);
+                        builder.Append(wrapped ? string.Empty : "\n");
+                    }
                 }
                 builder.AppendLine();
             }
@@ -316,6 +360,14 @@ public static partial class DocumentTextExtractor
 
     [GeneratedRegex(@"<[^>]+>")]
     private static partial Regex TagRegex();
+
+    // "2." / "2)" / "2" at the start of a line: a new list item, as in tabs shared into Samsung Notes
+    [GeneratedRegex(@"^\d{1,5}[.)]")]
+    private static partial Regex NumberedItemRegex();
+
+    // Only characters that can appear inside a link
+    [GeneratedRegex(@"^[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+$")]
+    private static partial Regex LinkContinuationRegex();
 
     [GeneratedRegex(@"(?:href|Target|xlink:href|url|src)\s*=\s*[""'](https?://[^""']+)[""']", RegexOptions.IgnoreCase)]
     private static partial Regex LinkAttributeRegex();
