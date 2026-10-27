@@ -435,6 +435,14 @@
 
                             <TextBlock x:Name="LblAria" Visibility="Collapsed" Margin="0,12,0,0" Style="{StaticResource NavigationViewItemHeaderTextStyle}"/>
 
+                            <community:SettingsCard x:Name="RowBrowserExtension">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xEA86;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <ToggleSwitch x:Name="TglBrowserExtension" Toggled="Tgl_Toggled"/>
+                            </community:SettingsCard>
+
                             <community:SettingsExpander x:Name="RowUseAria" Visibility="Collapsed">
                                 <community:SettingsExpander.HeaderIcon>
                                     <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE756;"/>

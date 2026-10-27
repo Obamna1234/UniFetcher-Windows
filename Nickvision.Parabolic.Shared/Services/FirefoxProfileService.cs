@@ -71,6 +71,7 @@ public class FirefoxProfileService : IFirefoxProfileService
     private readonly ILogger<FirefoxProfileService> _logger;
     private readonly string _snapshotRoot;
     private readonly SemaphoreSlim _snapshotLock;
+    private readonly List<Process> _startedProcesses = new List<Process>();
     private DateTime _snapshotTime;
     private string? _snapshotDir;
 
@@ -201,10 +202,11 @@ public class FirefoxProfileService : IFirefoxProfileService
         try
         {
             // -profile <folder> always targets the UniFetcher profile; Firefox hands the page to its window if it's already open
-            using var process = Process.Start(new ProcessStartInfo(FirefoxPath!, ["-profile", ProfileDirectory, "-new-tab", url.ToString()])
+            var process = Process.Start(new ProcessStartInfo(FirefoxPath!, ["-profile", ProfileDirectory, "-new-tab", url.ToString()])
             {
                 UseShellExecute = false
             });
+            Remember(process);
             return process is not null;
         }
         catch (Exception e)
@@ -239,10 +241,11 @@ public class FirefoxProfileService : IFirefoxProfileService
         }
         try
         {
-            using var process = Process.Start(new ProcessStartInfo(FirefoxPath!, ["-profile", ProfileDirectory, "-new-window", "about:blank"])
+            var process = Process.Start(new ProcessStartInfo(FirefoxPath!, ["-profile", ProfileDirectory, "-new-window", "about:blank"])
             {
                 UseShellExecute = false
             });
+            Remember(process);
             return process is not null;
         }
         catch (Exception e)
@@ -388,12 +391,20 @@ public class FirefoxProfileService : IFirefoxProfileService
         {
             return;
         }
-        var ours = FindProfileProcesses();
+        // Only windows UniFetcher opened itself (it remembers them); it never looks into other programs
+        List<Process> ours;
+        lock (_startedProcesses)
+        {
+            ours = _startedProcesses.ToList();
+        }
         foreach (var process in ours)
         {
             try
             {
-                process.CloseMainWindow();
+                if (!process.HasExited)
+                {
+                    process.CloseMainWindow();
+                }
             }
             catch
             {
@@ -406,54 +417,32 @@ public class FirefoxProfileService : IFirefoxProfileService
         }
         if (IsProfileRunning)
         {
-            foreach (var process in ours)
-            {
-                try
-                {
-                    if (!process.HasExited)
-                    {
-                        process.Kill(true);
-                    }
-                }
-                catch
-                {
-                    // already gone
-                }
-            }
-            await Task.Delay(1000);
-        }
-        foreach (var process in ours)
-        {
-            process.Dispose();
+            _logger.LogWarning("The UniFetcher browser window is still open; close it to let UniFetcher read its cookies.");
         }
     }
 
-    /// <summary>Firefox processes started with our profile folder on their command line. Your main Firefox is never included.</summary>
-    private List<Process> FindProfileProcesses()
+    /// <summary>Remembers a Firefox window UniFetcher opened with its own profile, so it can close it politely later.</summary>
+    private void Remember(Process? process)
     {
-        var result = new List<Process>();
-        if (!OperatingSystem.IsWindows())
+        if (process is null)
         {
-            return result;
+            return;
         }
-        foreach (var process in Process.GetProcessesByName("firefox"))
+        lock (_startedProcesses)
         {
-            try
+            _startedProcesses.RemoveAll(p =>
             {
-                var commandLine = ProcessCommandLine.Get(process.Id);
-                if (commandLine is not null && commandLine.Contains(ProfileDirectory, StringComparison.OrdinalIgnoreCase))
+                try
                 {
-                    result.Add(process);
-                    continue;
+                    return p.HasExited;
                 }
-            }
-            catch
-            {
-                // no access: not ours
-            }
-            process.Dispose();
+                catch
+                {
+                    return true;
+                }
+            });
+            _startedProcesses.Add(process);
         }
-        return result;
     }
 
     public void ClearCookieSnapshot()

@@ -49,6 +49,16 @@ If the download itself is blocked in your browser, use the browser's download me
 
 Never do this for a UniFetcher file you got from somewhere other than your own repository.
 
+## If your antivirus blocks UniFetcher
+
+UniFetcher isn't code-signed (that needs a paid certificate), and every test build is brand new, so antivirus programs like Malwarebytes sometimes flag it on behaviour alone ("Malware.AI…" style names are guesses by machine learning). Before allowing it:
+1. Check the file came from your own repository (`github.com/Obamna1234/UniFetcher-Windows`).
+2. Upload the flagged file to https://www.virustotal.com. If only one or two of ~70 scanners flag it with "AI"/"heuristic"/"generic" names, it's almost certainly a false alarm.
+3. Then in Malwarebytes: **Detections → select it → Restore**, and add the UniFetcher folder (`%LOCALAPPDATA%\Programs\UniFetcher`) under **Settings → Allow List**.
+4. You can also report the false positive to Malwarebytes (forums.malwarebytes.com → False Positives).
+
+What UniFetcher does, so you know what's normal: it downloads yt-dlp/ffmpeg updates from their official GitHub pages and runs them, opens its own Firefox profile when a site needs a session, and saves settings in `%APPDATA%\UniFetcher`. It doesn't register itself with your browsers unless you switch on **Settings → Downloader → Browser extension connection**.
+
 ## Update UniFetcher
 
 - UniFetcher checks your Releases page on start. When there's a new version, a bar appears at the top of the window: click **Update**. It downloads the new installer and runs it.

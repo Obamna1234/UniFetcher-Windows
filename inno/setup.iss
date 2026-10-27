@@ -105,10 +105,7 @@ Name: "{autoprograms}\{#MyAppShortName}"; Filename: "{app}\Release\{#MyAppExeNam
 Name: "{autodesktop}\{#MyAppShortName}"; Filename: "{app}\Release\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
-Root: HKA; Subkey: "Software\Classes\{#MyAppShortNameLower}"; ValueType: "string"; ValueData: "URL:UniFetcher Protocol"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\{#MyAppShortNameLower}"; ValueType: "string"; ValueName: "URL Protocol"; ValueData: ""
-Root: HKA; Subkey: "Software\Classes\{#MyAppShortNameLower}\DefaultIcon"; ValueType: "string"; ValueData: "{app}\Release\{#MyAppExeName},0"
-Root: HKA; Subkey: "Software\Classes\{#MyAppShortNameLower}\shell\open\command"; ValueType: "string"; ValueData: """{app}\Release\{#MyAppExeName}"" ""%1"""
+; (none: UniFetcher no longer registers a unifetcher:// link handler)
 
 [Run]
 Filename: "{app}\Release\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent unchecked

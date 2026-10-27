@@ -138,6 +138,10 @@ public sealed partial class SettingsPage : Page
         ToolTipService.SetToolTip(BtnClearCookiesFile, _translationService._("Clear Cookies File"));
         ToolTipService.SetToolTip(BtnSelectCookiesFile, _translationService._("Select Cookies File"));
         RowCookiesBrowser.Header = _translationService._("Cookies from Browser");
+        RowBrowserExtension.Header = _translationService._("Browser extension connection");
+        RowBrowserExtension.Description = _translationService._("Only needed for the optional \"Send to UniFetcher\" browser extension. When on, UniFetcher registers a small helper with Firefox, Brave, Chrome and Edge. Takes effect after restarting UniFetcher.");
+        TglBrowserExtension.OnContent = _translationService._("On");
+        TglBrowserExtension.OffContent = _translationService._("Off");
         RowProfile.Header = _translationService._("UniFetcher browser profile");
         RowProfile.Description = _controller.IsFirefoxInstalled ? _translationService._("A separate Firefox profile only UniFetcher uses, for sites that need a session or a login") : _translationService._("Needs Firefox. Without it, downloads run without cookies.");
         BtnOpenProfile.Content = _translationService._("Open UniFetcher browser");
@@ -221,6 +225,7 @@ public sealed partial class SettingsPage : Page
         TglSubfolderPerSite.IsOn = _controller.SubfolderPerSite;
         UpdateTempFolderLabel();
         TglSkipAlreadyDownloaded.IsOn = _controller.SkipAlreadyDownloaded;
+        TglBrowserExtension.IsOn = _controller.BrowserExtensionEnabled;
         CmbFreeSpaceLimit.SelectSelectionItem();
         TglIncognito.IsOn = _controller.Incognito;
         CmbNotificationMode.SelectSelectionItem();
@@ -537,6 +542,7 @@ public sealed partial class SettingsPage : Page
         _controller.MaxNumberOfActiveDownloads = (int)NumActiveDownloads.Value;
         _controller.SubfolderPerSite = TglSubfolderPerSite.IsOn;
         _controller.SkipAlreadyDownloaded = TglSkipAlreadyDownloaded.IsOn;
+        _controller.BrowserExtensionEnabled = TglBrowserExtension.IsOn;
         _controller.FreeSpaceLimit = (CmbFreeSpaceLimit.SelectedItem as BindableSelectionItem)!.ToSelectionItem<int>()!;
         _controller.Incognito = TglIncognito.IsOn;
         _controller.NotificationMode = (CmbNotificationMode.SelectedItem as BindableSelectionItem)!.ToSelectionItem<NotificationMode>()!;

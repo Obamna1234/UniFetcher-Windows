@@ -1,6 +1,13 @@
 # Changelog
 
 ## Unreleased
+### Fewer antivirus false alarms
+- No longer reads other programs' details to find its Firefox windows; it only closes windows it opened itself.
+- No longer ends a stuck copy of itself; it explains how to do that in Task Manager.
+- No unifetcher:// link handler is registered any more.
+- The browser-extension helper is only registered with your browsers if you switch on Settings → Downloader → Browser extension connection (off by default); entries from earlier test builds are removed.
+- The program now carries full version details; test builds are numbered 0.0.N-dev.
+
 ### Clearer failures and Action needed (from the Android app)
 - One plain-language reason on every failed download and failed lookup ("Site not supported", "Needs login", …), with a 🍪 when cookies were used.
 - Copy diagnostic on failed downloads (private details removed).

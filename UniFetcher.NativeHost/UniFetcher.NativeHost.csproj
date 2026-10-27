@@ -12,6 +12,9 @@
 		<InvariantGlobalization>true</InvariantGlobalization>
 		<UseSystemResourceKeys>true</UseSystemResourceKeys>
 		<Version>0.1.0</Version>
+		<Product>UniFetcher</Product>
+		<Company>UniFetcher</Company>
+		<Description>Helper that lets the optional Send to UniFetcher browser extension pass links to UniFetcher</Description>
 	</PropertyGroup>
 
 </Project>

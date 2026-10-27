@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
@@ -13,17 +12,15 @@ namespace Nickvision.Parabolic.WinUI.Helpers;
 /// <summary>
 /// UniFetcher: makes starting the app predictable.
 /// - Only one copy runs. Starting it again brings the open window to the front.
-/// - If an earlier copy is stuck in the background (no window, not answering), you're asked whether to close it.
+/// - If an earlier copy is stuck in the background (no window, not answering), it tells you how to end it in Task Manager.
 /// - If UniFetcher can't start, a message says so and the details are saved to crash.log, instead of nothing happening.
 /// </summary>
 public static partial class StartupGuard
 {
     private const uint MB_OK = 0x0;
-    private const uint MB_YESNO = 0x4;
     private const uint MB_ICONERROR = 0x10;
     private const uint MB_ICONWARNING = 0x30;
     private const uint MB_SETFOREGROUND = 0x10000;
-    private const int IDYES = 6;
 
     private static Mutex? _instanceMutex;
 
@@ -49,25 +46,19 @@ public static partial class StartupGuard
         {
             return false;
         }
-        // It didn't answer: it's stuck in the background without a window
-        var answer = MessageBox("UniFetcher is already running in the background, but it isn't responding.\n\nClose it and start UniFetcher again?\n\n(Any downloads it was doing will continue where they stopped next time.)", "UniFetcher", MB_YESNO | MB_ICONWARNING | MB_SETFOREGROUND);
-        if (answer != IDYES)
-        {
-            return false;
-        }
-        CloseOtherCopies();
+        // It didn't answer: it's stuck in the background without a window. UniFetcher doesn't end other programs itself;
+        // it tells you how to do it, then waits a little in case you do.
+        MessageBox("UniFetcher is already running in the background, but it isn't responding.\n\nTo fix it: press Ctrl+Shift+Esc to open Task Manager, find UniFetcher under Processes (or UniFetcher.exe on the Details tab), click End task, then start UniFetcher again.", "UniFetcher", MB_OK | MB_ICONWARNING | MB_SETFOREGROUND);
         try
         {
-            // Wait for the stuck copy to let go; when a process is ended its lock is released ("abandoned")
-            if (!_instanceMutex.WaitOne(TimeSpan.FromSeconds(15)))
+            if (!_instanceMutex.WaitOne(TimeSpan.FromSeconds(2)))
             {
-                MessageBox("UniFetcher couldn't close the copy that's stuck. Open Task Manager (Ctrl+Shift+Esc), find UniFetcher under Processes or on the Details tab, click End task, then start UniFetcher again.", "UniFetcher", MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
                 return false;
             }
         }
         catch (AbandonedMutexException)
         {
-            // We own it now
+            // The stuck copy was ended meanwhile; we own it now
         }
         return true;
     }
@@ -127,31 +118,6 @@ public static partial class StartupGuard
         catch
         {
             return false;
-        }
-    }
-
-    private static void CloseOtherCopies()
-    {
-        var me = Environment.ProcessId;
-        foreach (var process in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(Environment.ProcessPath ?? "UniFetcher")))
-        {
-            try
-            {
-                if (process.Id != me && process.SessionId == Process.GetCurrentProcess().SessionId)
-                {
-                    // Also ends the yt-dlp / ffmpeg it started
-                    process.Kill(true);
-                    process.WaitForExit(10000);
-                }
-            }
-            catch
-            {
-                // already gone, or not ours
-            }
-            finally
-            {
-                process.Dispose();
-            }
         }
     }
 

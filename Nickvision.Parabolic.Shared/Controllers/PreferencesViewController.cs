@@ -538,6 +538,13 @@ public class PreferencesViewController
         set => _configurationService.TempFolder = value;
     }
 
+    public bool BrowserExtensionEnabled
+    {
+        get => _configurationService.Get("BrowserExtensionEnabled", false);
+
+        set => _configurationService.Set("BrowserExtensionEnabled", value);
+    }
+
     public bool SkipAlreadyDownloaded
     {
         get => _configurationService.SkipAlreadyDownloaded;

@@ -54,12 +54,14 @@ public class InboxService : BackgroundService, IInboxService
     private readonly ILogger<InboxService> _logger;
     private readonly AppInfo _appInfo;
     private readonly IFirefoxProfileService _profile;
+    private readonly IConfigurationService _configurationService;
 
     public event EventHandler<LinksReceivedEventArgs>? LinksReceived;
     public event EventHandler? ActivationRequested;
 
-    public InboxService(ILogger<InboxService> logger, AppInfo appInfo, IFirefoxProfileService profile)
+    public InboxService(ILogger<InboxService> logger, AppInfo appInfo, IFirefoxProfileService profile, IConfigurationService configurationService)
     {
+        _configurationService = configurationService;
         _logger = logger;
         _appInfo = appInfo;
         _profile = profile;
@@ -73,15 +75,23 @@ public class InboxService : BackgroundService, IInboxService
         {
             return;
         }
-        RegisterNativeHost();
-        try
+        // The browser extension is optional and off by default: only then does UniFetcher register itself with your browsers
+        if (_configurationService.Get("BrowserExtensionEnabled", false))
         {
-            // Put the extension into the UniFetcher Firefox profile when a signed copy ships with UniFetcher
-            await _profile.InstallExtensionAsync();
+            RegisterNativeHost();
+            try
+            {
+                // Put the extension into the UniFetcher Firefox profile when a signed copy ships with UniFetcher
+                await _profile.InstallExtensionAsync();
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning($"Could not add the extension to the UniFetcher profile: {e.Message}");
+            }
         }
-        catch (Exception e)
+        else
         {
-            _logger.LogWarning($"Could not add the extension to the UniFetcher profile: {e.Message}");
+            UnregisterNativeHost();
         }
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -205,6 +215,26 @@ public class InboxService : BackgroundService, IInboxService
           {{allowed}}
         }
         """;
+
+    /// <summary>Removes only UniFetcher's own entries (from earlier test builds) when the extension is switched off.</summary>
+    private void UnregisterNativeHost()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+        foreach (var browser in new[] { @"Software\Mozilla\NativeMessagingHosts\", @"Software\Google\Chrome\NativeMessagingHosts\", @"Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\", @"Software\Microsoft\Edge\NativeMessagingHosts\" })
+        {
+            try
+            {
+                Registry.CurrentUser.DeleteSubKey(browser + HostName, false);
+            }
+            catch (Exception e)
+            {
+                _logger.LogDebug($"Could not remove {browser}{HostName}: {e.Message}");
+            }
+        }
+    }
 
     private static void SetKey(string path, string value)
     {
