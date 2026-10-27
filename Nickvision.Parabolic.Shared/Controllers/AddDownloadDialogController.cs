@@ -395,7 +395,7 @@ public class AddDownloadDialogController
                 var media = res.Media[i];
                 var item = new MediaSelectionItem(i, media, _translationService);
                 // UniFetcher: spot videos already downloaded (by link and by site+ID) and untick them
-                var record = await _downloadRegistryService.FindAsync(media.Url, media.VideoKey);
+                var record = _configurationService.SkipAlreadyDownloaded ? await _downloadRegistryService.FindAsync(media.Url, media.VideoKey) : null;
                 if (record is not null)
                 {
                     item.ShouldSelect = false;

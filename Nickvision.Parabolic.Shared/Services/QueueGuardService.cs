@@ -69,7 +69,8 @@ public interface IQueueGuardService
 
 public partial class QueueGuardService : IQueueGuardService, IDisposable
 {
-    private const long MinimumFreeBytes = 500L * 1024 * 1024;
+    // UniFetcher: the free-space limit is a setting (Settings → Downloads); 0 means only pause when the drive is actually full
+    private long MinimumFreeBytes => Math.Max(0, _configurationService.FreeSpaceLimitMb) * 1024L * 1024L;
     private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(10);
 
     private readonly ILogger<QueueGuardService> _logger;
@@ -152,7 +153,9 @@ public partial class QueueGuardService : IQueueGuardService, IDisposable
             return false;
         }
         var free = FreeSpace(root);
-        if (free is not null && free.Value < MinimumFreeBytes)
+        // When the size is known (a chosen format), check that it fits as well
+        var needed = MinimumFreeBytes + EstimatedBytes(options);
+        if (free is not null && needed > 0 && free.Value < needed)
         {
             Pause(QueuePauseReason.DriveFull, options);
             return false;
@@ -281,7 +284,7 @@ public partial class QueueGuardService : IQueueGuardService, IDisposable
         {
             QueuePauseReason.NoInternet => await IsInternetUpAsync(_probeHost),
             QueuePauseReason.DriveMissing => DriveIsBack(blocked),
-            QueuePauseReason.DriveFull => FreeSpace(blocked.SaveFolder) is long free && free >= MinimumFreeBytes && (TempFree() is not long tempFree || tempFree >= MinimumFreeBytes),
+            QueuePauseReason.DriveFull => FreeSpace(blocked.SaveFolder) is long free && free >= Math.Max(MinimumFreeBytes, 50L * 1024 * 1024) && (TempFree() is not long tempFree || tempFree >= MinimumFreeBytes),
             QueuePauseReason.TempMissing => TempOk(),
             _ => true
         };
@@ -303,6 +306,20 @@ public partial class QueueGuardService : IQueueGuardService, IDisposable
         _logger.LogInformation($"Queue resumed after {reason}.");
         _notificationService.Send(new AppNotification(reason == QueuePauseReason.NoInternet ? _translationService._("Connection is back. Downloads have resumed.") : _translationService._("Download drive is ready. Downloads have resumed."), NotificationSeverity.Success));
         Resumed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static long EstimatedBytes(DownloadOptions options)
+    {
+        long bytes = 0;
+        if (options.VideoFormat is not null && options.VideoFormat.Bytes > 0)
+        {
+            bytes += (long)options.VideoFormat.Bytes;
+        }
+        if (options.AudioFormat is not null && options.AudioFormat.Bytes > 0)
+        {
+            bytes += (long)options.AudioFormat.Bytes;
+        }
+        return bytes;
     }
 
     private bool TempOk()

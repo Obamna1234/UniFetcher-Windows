@@ -201,9 +201,41 @@ What UniFetcher does with an external drive:
   - **Clear history and cache**: forgets the history, the "already downloaded" list, finished Bulk Imports and cached files. Tick **Also clear UniFetcher browser data** to wipe the UniFetcher Firefox profile as well. Your videos are never deleted by this.
 - UniFetcher never overwrites a file: if a name is taken, the new file gets " (1)", " (2)" and so on.
 
+## When a download fails
+
+Every failed download shows **one plain reason** instead of just "Error". Hover over it for an explanation:
+
+| Reason | What it means |
+|---|---|
+| Site not supported | yt-dlp, the engine UniFetcher uses, can't read this site. Cookies or retrying won't help. |
+| Blocked by site security | A "verify you are human" check, or the site is limiting requests. |
+| Session rejected | UniFetcher made and refreshed a browser session, but the site still refused. It may be blocking your VPN: try another server. |
+| Needs login | Log in once in the UniFetcher browser. |
+| Video unavailable | Removed, private, or not available in your country. |
+| DRM: not supported | Copy-protected; UniFetcher doesn't download these. |
+| Network problem | The connection dropped or the site didn't answer. |
+| Not enough space | The drive is full, or the file is too big for a FAT32 drive. |
+
+A 🍪 next to the reason means a browser session (cookies) was used.
+
+**Colours** (Help → **What the Colours Mean**): **orange** border = needs your action, **red** = failed, **grey** = stopped by you, no colour = queued, downloading or finished.
+
+**Action needed**: downloads that need you (a login, a person check, or a VPN block) are collected under **Action needed** in the Downloads page, grouped by site, and an orange bar says how many are waiting. For each site:
+1. Click **Open**: the site opens in the UniFetcher browser (not your everyday browser).
+2. Log in or complete the check there.
+3. Click **Done**: UniFetcher retries every waiting video from that site with a fresh session.
+
+Nothing there expires, and the list is still there after you close UniFetcher. You get one message for all of them, not one per video.
+
+**Downloads menu**: **Retry All Failed** (skips the ones that need you), **Resume Stopped**, **Clear Failed and Stopped**.
+
+**Settings → Downloads**: **Skip videos already downloaded** (on by default) and **Keep free space** (2 GB by default; downloads pause before the drive gets fuller than this).
+
+If moving a finished video into your download folder fails (for example the drive was unplugged at that moment), the video is kept in the temporary folder and the download says where.
+
 ## Copy an error log and report a bug
 
-1. For a failed download: click the **Log** button on that download, then select the text that appears and copy it (Ctrl+A, Ctrl+C).
+1. For a failed download: click **Copy diagnostic** on it. That copies the reason, whether cookies were used, what UniFetcher tried and yt-dlp's error, with cookies, link tokens and your Windows user name removed. (Or click **Log** to see everything.)
 2. For a general problem: **Help → About** → **Debugging** → **Copy Debug Information**.
 3. **Before sharing, look through the text** and remove anything private (links you don't want shared, your Windows user name in file paths).
 4. Go to https://github.com/Obamna1234/UniFetcher-Windows/issues/new (or **Help → Report a Bug** in the app), describe what happened, paste the text, and click **Submit new issue**.

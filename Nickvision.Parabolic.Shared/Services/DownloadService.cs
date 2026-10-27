@@ -9,11 +9,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Nickvision.Parabolic.Shared.Services;
 
-public class DownloadService : IDisposable, IDownloadService
+public partial class DownloadService : IDisposable, IDownloadService
 {
     private readonly ILogger<DownloadService> _logger;
     private readonly IConfigurationService _configurationService;
@@ -494,6 +495,14 @@ public class DownloadService : IDisposable, IDownloadService
                 await RequeueAsync(download);
                 return;
             }
+            // UniFetcher: if moving the finished video into the download folder failed, the file is still in the temporary
+            // folder: never delete it, and say where it is
+            if (MoveFailedRegex().IsMatch(download.Log))
+            {
+                var tempFolder = string.IsNullOrEmpty(_configurationService.TempFolder) ? download.Options.SaveFolder : Path.Combine(_configurationService.TempFolder, "UniFetcher temp");
+                download.AddNote(_translationService._("The video was downloaded but couldn't be moved into the download folder. It's safe in: {0}", tempFolder));
+                download.Options.Steps.Add($"Moving the finished file failed; it was kept in the temporary folder");
+            }
             // UniFetcher: 403/410 -> get (or refresh once) a session in the UniFetcher Firefox profile and retry; logins/CAPTCHAs -> needs my action
             var usedCookies = !string.IsNullOrEmpty(download.Options.CookieProfile);
             var outcome = await _sessions.HandleFailureAsync(download.Options.Url, download.Log, usedCookies);
@@ -644,4 +653,7 @@ public class DownloadService : IDisposable, IDownloadService
         }
         DownloadProgressChanged?.Invoke(this, e);
     }
+
+    [GeneratedRegex(@"Unable to rename file|Unable to move|Errno 18|Invalid cross-device link", RegexOptions.IgnoreCase)]
+    private static partial Regex MoveFailedRegex();
 }

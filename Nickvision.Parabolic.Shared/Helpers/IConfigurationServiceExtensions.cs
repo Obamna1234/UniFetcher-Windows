@@ -32,6 +32,22 @@ public static class IConfigurationServiceExtensions
             set => configurationService.Set("TempFolder", value);
         }
 
+        /// <summary>UniFetcher: space to always keep free on the download / temp drive, in MB (0 = off). Default 2 GB.</summary>
+        public int FreeSpaceLimitMb
+        {
+            get => configurationService.Get("FreeSpaceLimitMb", 2048);
+
+            set => configurationService.Set("FreeSpaceLimitMb", value);
+        }
+
+        /// <summary>UniFetcher: skip (untick) videos you've already downloaded. Default on.</summary>
+        public bool SkipAlreadyDownloaded
+        {
+            get => configurationService.Get("SkipAlreadyDownloaded", true);
+
+            set => configurationService.Set("SkipAlreadyDownloaded", value);
+        }
+
         public bool Incognito
         {
             get => configurationService.Get("Incognito", false);

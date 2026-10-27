@@ -103,7 +103,7 @@ public partial class BulkImportService : BackgroundService, IBulkImportService
             {
                 status = PlanStatus.DuplicateInList;
             }
-            else if (await _registry.FindAsync(link.Url, null) is not null)
+            else if (_configurationService.SkipAlreadyDownloaded && await _registry.FindAsync(link.Url, null) is not null)
             {
                 status = PlanStatus.AlreadyDownloaded;
             }
@@ -305,7 +305,7 @@ public partial class BulkImportService : BackgroundService, IBulkImportService
         {
             item.Title = single.Title;
         }
-        var already = await _registry.FindAsync(single.Url, single.VideoKey) ?? await _registry.FindAsync(new Uri(item.Url), single.VideoKey);
+        var already = !_configurationService.SkipAlreadyDownloaded ? null : await _registry.FindAsync(single.Url, single.VideoKey) ?? await _registry.FindAsync(new Uri(item.Url), single.VideoKey);
         if (already is not null)
         {
             await SetStateAsync(item, BulkItemState.SkippedDuplicate, _translationService._("Already downloaded on {0}", already.DownloadedOn.ToString("d")));

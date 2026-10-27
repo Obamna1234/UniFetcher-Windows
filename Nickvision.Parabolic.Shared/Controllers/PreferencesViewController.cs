@@ -38,6 +38,7 @@ public class PreferencesViewController
     public IReadOnlyList<SelectionItem<ToolUpdateMode>> ToolUpdateModes { get; }
     public IReadOnlyList<SelectionItem<YtdlpChannel>> YtdlpChannels { get; }
     public IReadOnlyList<SelectionItem<NotificationMode>> NotificationModes { get; }
+    public IReadOnlyList<SelectionItem<int>> FreeSpaceLimits { get; }
 
     public PreferencesViewController(IConfigurationService configurationService, ITranslationService translationService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IFirefoxProfileService profile, IHistoryService historyService, IDownloadRegistryService registry, IBulkImportService bulkImportService)
     {
@@ -49,6 +50,14 @@ public class PreferencesViewController
         _historyService = historyService;
         _registry = registry;
         _bulkImportService = bulkImportService;
+        var limit = _configurationService.FreeSpaceLimitMb;
+        FreeSpaceLimits = new List<SelectionItem<int>>()
+        {
+            new SelectionItem<int>(2048, "2 GB", limit == 2048),
+            new SelectionItem<int>(1024, "1 GB", limit == 1024),
+            new SelectionItem<int>(500, "500 MB", limit == 500),
+            new SelectionItem<int>(0, _translationService._("Off (only when the drive is full)"), limit == 0)
+        };
         var notificationMode = _configurationService.NotificationMode;
         NotificationModes = new List<SelectionItem<NotificationMode>>()
         {
@@ -527,6 +536,18 @@ public class PreferencesViewController
         get => _configurationService.TempFolder;
 
         set => _configurationService.TempFolder = value;
+    }
+
+    public bool SkipAlreadyDownloaded
+    {
+        get => _configurationService.SkipAlreadyDownloaded;
+
+        set => _configurationService.SkipAlreadyDownloaded = value;
+    }
+
+    public SelectionItem<int> FreeSpaceLimit
+    {
+        set => _configurationService.FreeSpaceLimitMb = value.Value;
     }
 
     public bool Incognito

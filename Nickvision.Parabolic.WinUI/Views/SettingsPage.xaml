@@ -137,6 +137,28 @@
                                 <ToggleSwitch x:Name="TglPreventSuspend" Toggled="Tgl_Toggled"/>
                             </community:SettingsCard>
 
+                            <community:SettingsCard x:Name="RowSkipAlreadyDownloaded">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE73E;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <ToggleSwitch x:Name="TglSkipAlreadyDownloaded" Toggled="Tgl_Toggled"/>
+                            </community:SettingsCard>
+
+                            <community:SettingsCard x:Name="RowFreeSpaceLimit">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xEDA2;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <ComboBox x:Name="CmbFreeSpaceLimit" SelectionChanged="Cmb_SelectionChanged">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="helpers:BindableSelectionItem">
+                                            <TextBlock Text="{x:Bind Label}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </community:SettingsCard>
+
                             <community:SettingsCard x:Name="RowTempFolder">
                                 <community:SettingsCard.HeaderIcon>
                                     <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8B7;"/>

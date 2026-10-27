@@ -1,6 +1,16 @@
 # Changelog
 
 ## Unreleased
+### Clearer failures and Action needed (from the Android app)
+- One plain-language reason on every failed download and failed lookup ("Site not supported", "Needs login", …), with a 🍪 when cookies were used.
+- Copy diagnostic on failed downloads (private details removed).
+- Colour borders (orange / red / grey) and Help → What the Colours Mean.
+- Action needed view grouped by site with Open and Done, an orange banner, one grouped notification; kept after closing UniFetcher.
+- Downloads menu: Resume Stopped, Clear Failed and Stopped; Retry All Failed skips the ones that need you. New filters: Action needed, Stopped.
+- Settings: Skip videos already downloaded (on), Keep free space (2 GB / 1 GB / 500 MB / Off).
+- If moving a finished video fails, it's kept in the temporary folder and you're told where.
+- Unit tests for the failure reasons and link import run in every build.
+
 ### Fixes from first test on a real PC
 - Installer no longer asks for administrator rights: it installs just for you.
 - Starting UniFetcher while it's open brings the window forward; a copy stuck in the background can be closed with one click; start-up errors show a message and are saved to crash.log; closing the window always ends the program.
