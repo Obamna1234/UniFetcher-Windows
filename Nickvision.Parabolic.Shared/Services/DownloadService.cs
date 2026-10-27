@@ -25,6 +25,7 @@ public class DownloadService : IDisposable, IDownloadService
     private readonly IDownloadRegistryService _downloadRegistryService;
     private readonly IQueueGuardService _queueGuard;
     private readonly ISiteSessionService _sessions;
+    private readonly IActionNeededService _actionNeeded;
     private readonly INotificationService _notificationService;
     // Session retries per download (first session + one refresh at most)
     private readonly Dictionary<string, int> _sessionRetries = new Dictionary<string, int>();
@@ -47,7 +48,7 @@ public class DownloadService : IDisposable, IDownloadService
     public int QueuedCount => _queued.Count;
     public int CompletedCount => _completed.Count;
 
-    public DownloadService(ILogger<DownloadService> logger, IConfigurationService configurationService, IHistoryService historyService, IRecoveryService recoveryService, ITranslationService translationService, IYtdlpExecutableService ytdlpService, IToolUpdateService toolUpdateService, IDownloadRegistryService downloadRegistryService, IQueueGuardService queueGuard, ISiteSessionService sessions, INotificationService notificationService)
+    public DownloadService(ILogger<DownloadService> logger, IConfigurationService configurationService, IHistoryService historyService, IRecoveryService recoveryService, ITranslationService translationService, IYtdlpExecutableService ytdlpService, IToolUpdateService toolUpdateService, IDownloadRegistryService downloadRegistryService, IQueueGuardService queueGuard, ISiteSessionService sessions, INotificationService notificationService, IActionNeededService actionNeeded)
     {
         _logger = logger;
         _configurationService = configurationService;
@@ -59,6 +60,7 @@ public class DownloadService : IDisposable, IDownloadService
         _downloadRegistryService = downloadRegistryService;
         _queueGuard = queueGuard;
         _sessions = sessions;
+        _actionNeeded = actionNeeded;
         _notificationService = notificationService;
         _queueGuard.Resumed += (_, _) => StartNextQueued();
         _retriedAfterUpdate = new HashSet<string>();
@@ -79,13 +81,33 @@ public class DownloadService : IDisposable, IDownloadService
             var failed = 0;
             foreach (var pair in _completed)
             {
-                if (pair.Value.Status == DownloadStatus.Error)
+                if (pair.Value.Status == DownloadStatus.Error && !pair.Value.Reason.NeedsAction())
                 {
                     failed++;
                 }
             }
             return failed;
         }
+    }
+
+    /// <summary>UniFetcher: failed downloads waiting for you (this session).</summary>
+    public int ActionNeededCount => CountCompleted(d => d.Status == DownloadStatus.Error && d.Reason.NeedsAction());
+
+    public int StoppedCount => CountCompleted(d => d.Status == DownloadStatus.Stopped);
+
+    public int FinishedCount => CountCompleted(d => d.Status == DownloadStatus.Success);
+
+    private int CountCompleted(Func<Download, bool> match)
+    {
+        var count = 0;
+        foreach (var pair in _completed)
+        {
+            if (match(pair.Value))
+            {
+                count++;
+            }
+        }
+        return count;
     }
 
     public async Task AddAsync(DownloadOptions options, bool excludeFromHistory)
@@ -185,6 +207,79 @@ public class DownloadService : IDisposable, IDownloadService
         return ids;
     }
 
+    /// <summary>UniFetcher: removes failed and stopped downloads from the list (finished ones stay).</summary>
+    public IReadOnlyList<int> ClearFailedAndStopped()
+    {
+        var ids = new List<int>();
+        foreach (var pair in _completed)
+        {
+            if (pair.Value.Status is DownloadStatus.Error or DownloadStatus.Stopped)
+            {
+                ids.Add(pair.Key);
+            }
+        }
+        foreach (var id in ids)
+        {
+            var download = _completed[id];
+            download.Completed -= Download_Completed;
+            download.ProgressChanged -= Download_ProgressChanged;
+            download.Dispose();
+            _completed.Remove(id);
+        }
+        return ids;
+    }
+
+    /// <summary>UniFetcher: puts everything you stopped back in the queue.</summary>
+    public async Task ResumeStoppedAsync()
+    {
+        var ids = new List<int>();
+        foreach (var pair in _completed)
+        {
+            if (pair.Value.Status == DownloadStatus.Stopped)
+            {
+                ids.Add(pair.Key);
+            }
+        }
+        foreach (var id in ids)
+        {
+            await RetryAsync(id);
+        }
+    }
+
+    /// <summary>UniFetcher: true if this link is downloading or waiting in the queue right now.</summary>
+    public bool IsInQueue(string url)
+    {
+        foreach (var download in _downloading.Values)
+        {
+            if (download.Options.Url.ToString() == url)
+            {
+                return true;
+            }
+        }
+        foreach (var download in _queued.Values)
+        {
+            if (download.Options.Url.ToString() == url)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>UniFetcher: ids of failed downloads from one site that are waiting for you.</summary>
+    public IReadOnlyList<int> WaitingIdsForSite(string site)
+    {
+        var ids = new List<int>();
+        foreach (var pair in _completed)
+        {
+            if (pair.Value.Status == DownloadStatus.Error && pair.Value.Reason.NeedsAction() && SiteSessionService.SiteOf(pair.Value.Options.Url) == site)
+            {
+                ids.Add(pair.Key);
+            }
+        }
+        return ids;
+    }
+
     public IReadOnlyList<int> ClearQueued()
     {
         _logger.LogDebug($"Clearing queued downloads...");
@@ -269,7 +364,8 @@ public class DownloadService : IDisposable, IDownloadService
         var ids = new List<int>();
         foreach (var pair in _completed)
         {
-            if (pair.Value.Status == DownloadStatus.Error)
+            // UniFetcher: downloads that need you (login, person check, VPN) aren't retried blindly
+            if (pair.Value.Status == DownloadStatus.Error && !pair.Value.Reason.NeedsAction())
             {
                 ids.Add(pair.Key);
             }
@@ -406,6 +502,7 @@ public class DownloadService : IDisposable, IDownloadService
             if (outcome.Decision == SessionDecision.RetryWithCookies && sessionTries < 2)
             {
                 _sessionRetries[sessionKey] = sessionTries + 1;
+                download.Options.Steps.Add(usedCookies ? "Refreshed the site's browser session and retried" : "Made a browser session for the site (UniFetcher profile) and retried");
                 DownloadCompleted?.Invoke(this, e);
                 _logger.LogInformation($"Retrying download ({e.Id}) with a site session.");
                 await RetryAsync(e.Id);
@@ -414,12 +511,8 @@ public class DownloadService : IDisposable, IDownloadService
             }
             if (outcome.Decision == SessionDecision.NeedsAction)
             {
+                // One grouped "N videos need your action" message is shown instead of one per download
                 download.AddNote(outcome.Message);
-                _notificationService.Send(new AppNotification(outcome.Message, NotificationSeverity.Warning)
-                {
-                    Action = "needs-action",
-                    ActionParam = download.Options.Url.ToString()
-                });
             }
             var retryKey = download.Options.Url.ToString() + "|" + download.FilePath;
             if (ToolUpdateService.IsExtractorError(download.Log) && _retriedAfterUpdate.Add(retryKey))
@@ -428,11 +521,13 @@ public class DownloadService : IDisposable, IDownloadService
                 DownloadCompleted?.Invoke(this, e);
                 if (await _toolUpdateService.TryUpdateAfterExtractorErrorAsync())
                 {
+                    download.Options.Steps.Add($"Updated yt-dlp to {await _toolUpdateService.GetYtdlpVersionAsync()} and retried");
                     _logger.LogInformation($"Retrying download ({e.Id}) with the updated yt-dlp.");
                     await RetryAsync(e.Id);
                 }
                 else
                 {
+                    download.Options.Steps.Add("Checked for a newer yt-dlp: none available");
                     DownloadFinished?.Invoke(this, new DownloadFinishedEventArgs(download.Options, e.Status, download.Log, download.FilePath));
                 }
                 StartNextQueued();
@@ -457,6 +552,20 @@ public class DownloadService : IDisposable, IDownloadService
         else if (e.Status == DownloadStatus.Stopped)
         {
             _logger.LogDebug($"Download stopped ({e.Id}): {download.Log}");
+        }
+        if (e.Status == DownloadStatus.Error)
+        {
+            // Work out the plain-language reason now that UniFetcher's own notes are in the log
+            e = download.BuildCompletedArgs(e.ShowNotification);
+            if (e.Reason.NeedsAction() && string.IsNullOrEmpty(download.Options.BulkItemId))
+            {
+                // Kept in the "Action needed" list (survives closing UniFetcher) until you press Done
+                await _actionNeeded.AddAsync(download.Options, e.Reason);
+            }
+        }
+        else if (e.Status == DownloadStatus.Success)
+        {
+            await _actionNeeded.RemoveAsync(download.Options.Url.ToString());
         }
         DownloadCompleted?.Invoke(this, e);
         DownloadFinished?.Invoke(this, new DownloadFinishedEventArgs(download.Options, e.Status, download.Log, download.FilePath));

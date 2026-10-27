@@ -434,10 +434,15 @@ public class AddDownloadDialogController
             {
                 _logger.LogError($"An error occurred while discovering media ({url}): {e}");
             }
-            _notificationService.Send(new AppNotification(_translationService._("An error occurred while discovering media"), NotificationSeverity.Error)
+            // UniFetcher: say why in plain words (e.g. "Site not supported") instead of just "an error occurred"
+            var reason = e is YtdlpException ? FailureReasons.ClassifyLog(e.Message, !string.IsNullOrEmpty(e.Message) && e.Message.Contains("--cookies-from-browser")) : FailureReason.Other;
+            var message = e is YtdlpException
+                ? _translationService._("Couldn't get this video: {0}. {1}", reason.Label(_translationService), reason.Explanation(_translationService))
+                : _translationService._("An error occurred while discovering media");
+            _notificationService.Send(new AppNotification(message, reason.NeedsAction() ? NotificationSeverity.Warning : NotificationSeverity.Error)
             {
-                Action = "error",
-                ActionParam = e.ToString()
+                Action = reason.NeedsAction() ? "needs-action" : "error",
+                ActionParam = reason.NeedsAction() ? url.ToString() : e.ToString()
             });
             return null;
         }

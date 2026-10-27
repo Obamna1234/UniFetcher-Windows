@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Nickvision.Parabolic.Shared.Controllers;
@@ -32,6 +33,8 @@ public class MainWindowController
     private readonly IUpdaterService _updaterService;
     private readonly IToolUpdateService _toolUpdateService;
     private readonly ISiteSessionService _sessions;
+    private readonly IActionNeededService _actionNeeded;
+    private DateTime _lastActionToast = DateTime.MinValue;
 
     /// <summary>UniFetcher: links sent from the browser extension (raised on a background thread).</summary>
     public event EventHandler<LinksReceivedEventArgs>? LinksFromExtension;
@@ -46,7 +49,7 @@ public class MainWindowController
     private AppVersion _latestYtdlpVersion;
     private AppVersion _latestDenoVersion;
 
-    public MainWindowController(ILogger<MainWindowController> logger, AppInfo appInfo, IArgumentsService argumentsService, IConfigurationService configurationService, IDatabaseService databaseService, IDenoExecutableService denoExecutableService, IDownloadService downloadService, INotificationService notificationService, IPowerService powerService, IRecoveryService recoveryService, ITranslationService translationService, IUpdaterService updaterService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IInboxService inboxService, IBulkImportService bulkImportService, IYtdlpExecutableService ytdlpExecutableService)
+    public MainWindowController(ILogger<MainWindowController> logger, AppInfo appInfo, IArgumentsService argumentsService, IConfigurationService configurationService, IDatabaseService databaseService, IDenoExecutableService denoExecutableService, IDownloadService downloadService, INotificationService notificationService, IPowerService powerService, IRecoveryService recoveryService, ITranslationService translationService, IUpdaterService updaterService, IToolUpdateService toolUpdateService, ISiteSessionService sessions, IInboxService inboxService, IBulkImportService bulkImportService, IActionNeededService actionNeeded, IYtdlpExecutableService ytdlpExecutableService)
     {
         _logger = logger;
         _appInfo = appInfo;
@@ -62,12 +65,15 @@ public class MainWindowController
         _updaterService = updaterService;
         _toolUpdateService = toolUpdateService;
         _sessions = sessions;
+        _actionNeeded = actionNeeded;
+        _actionNeeded.Changed += async (_, _) => await ActionNeeded_ChangedAsync();
         inboxService.LinksReceived += (_, e) => LinksFromExtension?.Invoke(this, e);
         inboxService.ActivationRequested += (_, _) => ShowWindowRequested?.Invoke(this, EventArgs.Empty);
         // Windows notifications: one per normal download, one per finished Bulk Import (not one per bulk link)
         downloadService.DownloadFinished += (_, e) =>
         {
-            if (string.IsNullOrEmpty(e.Options.BulkItemId) && e.Status is DownloadStatus.Success or DownloadStatus.Error)
+            if (string.IsNullOrEmpty(e.Options.BulkItemId) && e.Status is DownloadStatus.Success or DownloadStatus.Error
+                && !(e.Status == DownloadStatus.Error && FailureReasons.ClassifyLog(e.Log, !string.IsNullOrEmpty(e.Options.CookieProfile)).NeedsAction()))
             {
                 var name = System.IO.Path.GetFileNameWithoutExtension(e.FilePath);
                 Notify(e.Status == DownloadStatus.Success ? _translationService._("Download finished") : _translationService._("Download failed"), name);
@@ -103,6 +109,12 @@ public class MainWindowController
     public int CompletedDownloadsCount => _downloadService.CompletedCount;
 
     public int FailedDownloadsCount => _downloadService.FailedCount;
+
+    public int ActionNeededDownloadsCount => _downloadService.ActionNeededCount;
+
+    public int StoppedDownloadsCount => _downloadService.StoppedCount;
+
+    public int FinishedDownloadsCount => _downloadService.FinishedCount;
 
     public int QueuedDownloadsCount => _downloadService.QueuedCount;
 
@@ -433,6 +445,79 @@ public class MainWindowController
                 WindowsNotificationRequested?.Invoke(this, (title, detail));
                 return;
         }
+    }
+
+    /// <summary>UniFetcher: raised (on a background thread) when the "Action needed" list changes.</summary>
+    public event EventHandler? ActionNeededChanged;
+
+    public async Task<IReadOnlyList<WaitingLink>> GetWaitingLinksAsync() => await _actionNeeded.GetAllAsync();
+
+    /// <summary>At start-up: tell you about links from an earlier session that still need you.</summary>
+    public async Task ReportWaitingAsync()
+    {
+        var waiting = await _actionNeeded.GetAllAsync();
+        if (waiting.Count > 0)
+        {
+            var sites = waiting.Select(x => x.Site).Distinct().Count();
+            _notificationService.Send(new AppNotification(_translationService._n("{0} video from earlier still needs your action", "{0} videos from earlier still need your action", waiting.Count, waiting.Count) + " · " + _translationService._n("{0} site", "{0} sites", sites, sites), NotificationSeverity.Warning)
+            {
+                Action = "action-needed"
+            });
+        }
+    }
+
+    /// <summary>One grouped message ("4 videos need your action · 2 sites") instead of one per download.</summary>
+    private async Task ActionNeeded_ChangedAsync()
+    {
+        ActionNeededChanged?.Invoke(this, EventArgs.Empty);
+        var waiting = await _actionNeeded.GetAllAsync();
+        if (waiting.Count == 0 || DateTime.Now - _lastActionToast < TimeSpan.FromSeconds(30))
+        {
+            return;
+        }
+        _lastActionToast = DateTime.Now;
+        var sites = waiting.Select(x => x.Site).Distinct().Count();
+        var text = _translationService._n("{0} video needs your action", "{0} videos need your action", waiting.Count, waiting.Count) + " · " + _translationService._n("{0} site", "{0} sites", sites, sites);
+        _notificationService.Send(new AppNotification(text, NotificationSeverity.Warning)
+        {
+            Action = "action-needed"
+        });
+        Notify(_translationService._("UniFetcher needs you"), text);
+    }
+
+    /// <summary>"Done" for a site: retries everything from that site that was waiting, with a fresh session.</summary>
+    public async Task DoneForSiteAsync(string site)
+    {
+        var waiting = (await _actionNeeded.GetAllAsync()).Where(x => x.Site == site).ToList();
+        var liveIds = _downloadService.WaitingIdsForSite(site);
+        await _actionNeeded.RemoveSiteAsync(site);
+        foreach (var id in liveIds)
+        {
+            await _downloadService.RetryAsync(id);
+        }
+        // Links kept from an earlier session (UniFetcher was closed meanwhile) go back in the queue too
+        var toAdd = waiting.Where(w => !_downloadService.IsInQueue(w.Url)).Select(w => w.Options).ToList();
+        foreach (var options in toAdd)
+        {
+            options.Steps.Add("You pressed Done after visiting the site; retried with a fresh session");
+        }
+        if (toAdd.Count > 0)
+        {
+            await _downloadService.AddAsync(toAdd, true);
+        }
+    }
+
+    public async Task RemoveWaitingSiteAsync(string site)
+    {
+        await _actionNeeded.RemoveSiteAsync(site);
+    }
+
+    public async Task ResumeStoppedAsync() => await _downloadService.ResumeStoppedAsync();
+
+    public async Task<IReadOnlyList<int>> ClearFailedAndStoppedAsync()
+    {
+        await _actionNeeded.ClearAsync();
+        return _downloadService.ClearFailedAndStopped();
     }
 
     /// <summary>UniFetcher: opens a link in the UniFetcher Firefox profile (for logins / "verify you are human" checks).</summary>

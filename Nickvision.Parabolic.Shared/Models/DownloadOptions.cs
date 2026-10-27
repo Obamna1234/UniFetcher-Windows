@@ -35,6 +35,9 @@ public class DownloadOptions
     public string? CookieProfile { get; set; }
     /// <summary>UniFetcher: id of the Bulk Import item this download belongs to (empty for normal downloads).</summary>
     public string BulkItemId { get; set; } = string.Empty;
+    /// <summary>UniFetcher: what UniFetcher tried for this download, for "Copy diagnostic" (kept across retries; not saved).</summary>
+    [JsonIgnore]
+    public List<string> Steps { get; } = new List<string>();
 
     public DownloadOptions(Uri url)
     {

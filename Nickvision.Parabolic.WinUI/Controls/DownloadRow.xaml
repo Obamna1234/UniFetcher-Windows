@@ -7,7 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
-    <Grid HorizontalAlignment="Stretch" RowSpacing="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+    <Grid x:Name="RowRoot" HorizontalAlignment="Stretch" RowSpacing="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
           CornerRadius="{ThemeResource ControlCornerRadius}" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" Padding="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -93,6 +93,16 @@
                     </StackPanel>
 					
                     <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Button x:Name="BtnCopyDiagnostic" Click="CopyDiagnostic">
+                            <Button.Content>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8C8;"/>
+
+                                    <TextBlock x:Name="LblCopyDiagnostic"/>
+                                </StackPanel>
+                            </Button.Content>
+                        </Button>
+
                         <Button Click="Retry">
                             <Button.Content>
                                 <StackPanel Orientation="Horizontal" Spacing="6">

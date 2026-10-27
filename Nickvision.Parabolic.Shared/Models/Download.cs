@@ -9,6 +9,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -30,6 +31,8 @@ public partial class Download : IDisposable
     public DownloadOptions Options { get; }
     public string FilePath { get; private set; }
     public DownloadStatus Status { get; private set; }
+    /// <summary>UniFetcher: plain-language reason when it failed.</summary>
+    public FailureReason Reason { get; private set; }
     public string Log => _logBuilder.ToString();
 
     public event EventHandler<DownloadCompletedEventArgs>? Completed;
@@ -64,6 +67,28 @@ public partial class Download : IDisposable
     {
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>UniFetcher: where cookies came from for this download, or empty if none.</summary>
+    public string CookieSource => !string.IsNullOrEmpty(Options.CookieProfile) ? "UniFetcher browser profile (automatic session)" : _configurationService.CookiesBrowser != Browser.None ? $"{_configurationService.CookiesBrowser} (Cookies from Browser setting)" : File.Exists(_configurationService.CookiesPath) ? "cookies file (Cookies from File setting)" : string.Empty;
+
+    /// <summary>UniFetcher: works out the plain-language reason again (after UniFetcher added notes).</summary>
+    public void UpdateReason()
+    {
+        Reason = Status == DownloadStatus.Error ? FailureReasons.ClassifyLog(Log, !string.IsNullOrEmpty(CookieSource)) : FailureReason.None;
+    }
+
+    /// <summary>UniFetcher: the "finished" message for this download, with reason, cookie source and steps.</summary>
+    public DownloadCompletedEventArgs BuildCompletedArgs(bool showNotification = true)
+    {
+        UpdateReason();
+        return new DownloadCompletedEventArgs(Id, Status, FilePath, Log.AsMemory(), showNotification)
+        {
+            Reason = Reason,
+            CookieSource = CookieSource,
+            Steps = Options.Steps.ToArray(),
+            Url = Options.Url.ToString()
+        };
     }
 
     /// <summary>UniFetcher: adds a plain-language note to the download's log (e.g. what you need to do).</summary>
@@ -118,7 +143,7 @@ public partial class Download : IDisposable
             _logBuilder.AppendLine(log);
             Status = DownloadStatus.Error;
             ProgressChanged?.Invoke(this, new DownloadProgressChangedEventArgs(Id, log.AsMemory(), double.NaN, 0.0, 0));
-            Completed?.Invoke(this, new DownloadCompletedEventArgs(Id, Status, FilePath, log.AsMemory(), false));
+            Completed?.Invoke(this, BuildCompletedArgs(false));
             return;
         }
         _removeSourceData = _configurationService.RemoveSourceData;
@@ -252,7 +277,7 @@ public partial class Download : IDisposable
             catch { }
         }
         ProgressChanged?.Invoke(this, new DownloadProgressChangedEventArgs(Id, ReadOnlyMemory<char>.Empty));
-        Completed?.Invoke(this, new DownloadCompletedEventArgs(Id, Status, FilePath, Log.AsMemory(), true));
+        Completed?.Invoke(this, BuildCompletedArgs(true));
         if (_process is not null)
         {
             _process.Exited -= Process_Exited;

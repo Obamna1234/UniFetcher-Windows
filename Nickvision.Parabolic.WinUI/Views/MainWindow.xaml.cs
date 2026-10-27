@@ -15,6 +15,7 @@ using Nickvision.Parabolic.Shared.Services;
 using Nickvision.Parabolic.WinUI.Controls;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Windows.System;
 
@@ -81,6 +82,7 @@ public sealed partial class MainWindow : Window
         eventsService.DownloadStartedFromQueue += (sender, e) => DispatcherQueue.TryEnqueue(() => Controller_DownloadStartedFromQueue(sender, e));
         eventsService.DownloadRetired += (sender, e) => DispatcherQueue.TryEnqueue(() => Controller_DownloadRetired(sender, e));
         _controller.LinksFromExtension += (sender, e) => DispatcherQueue.TryEnqueue(async () => await Controller_LinksFromExtensionAsync(e));
+        _controller.ActionNeededChanged += (_, _) => DispatcherQueue.TryEnqueue(UpdateDownloadsList);
         _controller.ShowWindowRequested += (_, _) => DispatcherQueue.TryEnqueue(() =>
         {
             if (AppWindow.Presenter is OverlappedPresenter presenter && presenter.State == OverlappedPresenterState.Minimized)
@@ -136,10 +138,16 @@ public sealed partial class MainWindow : Window
         BtnClearAllCompleted.Label = _translationService._("Clear All Completed");
         LblDownloadsAddDownload.Text = _translationService._("Add");
         NavDownloadsAll.Content = _translationService._("All");
-        NavDownloadsRunning.Content = _translationService._("Running");
+        NavDownloadsRunning.Content = _translationService._("Downloading");
+        NavDownloadsActionNeeded.Content = _translationService._("Action needed");
         NavDownloadsQueued.Content = _translationService._("Queued");
-        NavDownloadsCompleted.Content = _translationService._("Completed");
+        NavDownloadsCompleted.Content = _translationService._("Finished");
         NavDownloadsFailed.Content = _translationService._("Failed");
+        NavDownloadsStopped.Content = _translationService._("Stopped");
+        BtnBannerView.Content = _translationService._("View");
+        MenuResumeStopped.Text = _translationService._("Resume Stopped");
+        MenuClearFailedStopped.Text = _translationService._("Clear Failed and Stopped");
+        MenuColourKey.Text = _translationService._("What the Colours Mean");
         StatusNoneDownloads.Title = _translationService._("No Downloads");
         StatusNoneDownloads.Description = _translationService._("There are no downloads of this type");
         LblNoneAddDownload.Text = _translationService._("Add Download");
@@ -154,6 +162,7 @@ public sealed partial class MainWindow : Window
     {
         ViewStack.SelectedIndex = (int)Pages.Home;
         ViewStackDownloads.SelectedIndex = 0;
+        _ = _controller.ReportWaitingAsync();
         MenuCheckForUpdates.IsEnabled = false;
         var updatesTask = _controller.CheckForUpdatesAsync(false);
         if (_controller.ShowDisclaimerOnStartup)
@@ -310,6 +319,16 @@ public sealed partial class MainWindow : Window
             {
                 InfoBar.IsOpen = false;
                 await GetBulkImportWindow().ShowJobAsync(jobId);
+            };
+            BtnInfoBar.Click += _notificationClickHandler;
+        }
+        else if (e.Notification.Action == "action-needed")
+        {
+            BtnInfoBar.Content = _translationService._("View");
+            _notificationClickHandler = (_, _) =>
+            {
+                InfoBar.IsOpen = false;
+                ViewActionNeeded(null, new RoutedEventArgs());
             };
             BtnInfoBar.Click += _notificationClickHandler;
         }
@@ -684,8 +703,10 @@ public sealed partial class MainWindow : Window
             {
                 "1" => row.Status == DownloadStatus.Running || row.Status == DownloadStatus.Paused,
                 "2" => row.Status == DownloadStatus.Queued,
-                "3" => row.Status == DownloadStatus.Success || row.Status == DownloadStatus.Error || row.Status == DownloadStatus.Stopped,
-                "4" => row.Status == DownloadStatus.Error,
+                "3" => row.Status == DownloadStatus.Success,
+                "4" => row.Status == DownloadStatus.Error && !row.NeedsAction,
+                "5" => row.NeedsAction,
+                "6" => row.Status == DownloadStatus.Stopped,
                 _ => true
             })
             {
@@ -694,16 +715,218 @@ public sealed partial class MainWindow : Window
         }
         rows.Reverse();
         ListDownloads.ItemsSource = rows;
-        ViewStackDownloads.SelectedIndex = rows.Count > 0 ? 1 : 0;
-        InfoBadgeDownloadsAll.Value = _controller.RemainingDownloadsCount;
-        InfoBadgeDownloadsAll.Visibility = _controller.RemainingDownloadsCount > 0 ? Visibility.Visible : Visibility.Collapsed;
-        InfoBadgeDownloadsRunning.Value = _controller.RunningDownloadsCount;
-        InfoBadgeDownloadsRunning.Visibility = _controller.RunningDownloadsCount > 0 ? Visibility.Visible : Visibility.Collapsed;
-        InfoBadgeDownloadsQueued.Value = _controller.QueuedDownloadsCount;
-        InfoBadgeDownloadsQueued.Visibility = _controller.QueuedDownloadsCount > 0 ? Visibility.Visible : Visibility.Collapsed;
-        InfoBadgeDownloadsCompleted.Value = _controller.CompletedDownloadsCount;
-        InfoBadgeDownloadsCompleted.Visibility = _controller.CompletedDownloadsCount > 0 ? Visibility.Visible : Visibility.Collapsed;
-        InfoBadgeDownloadsFailed.Value = _controller.FailedDownloadsCount;
-        InfoBadgeDownloadsFailed.Visibility = _controller.FailedDownloadsCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (selectedTag == "5")
+        {
+            // Action needed: grouped by site, including links kept from an earlier session
+            _ = RenderActionNeededAsync();
+        }
+        else
+        {
+            ViewStackDownloads.SelectedIndex = rows.Count > 0 ? 1 : 0;
+        }
+        SetBadge(InfoBadgeDownloadsAll, _controller.RemainingDownloadsCount);
+        SetBadge(InfoBadgeDownloadsRunning, _controller.RunningDownloadsCount);
+        SetBadge(InfoBadgeDownloadsQueued, _controller.QueuedDownloadsCount);
+        SetBadge(InfoBadgeDownloadsCompleted, _controller.FinishedDownloadsCount);
+        SetBadge(InfoBadgeDownloadsFailed, _controller.FailedDownloadsCount);
+        SetBadge(InfoBadgeDownloadsStopped, _controller.StoppedDownloadsCount);
+        _ = UpdateActionNeededBannerAsync();
+    }
+
+    private static void SetBadge(InfoBadge badge, int value)
+    {
+        badge.Value = value;
+        badge.Visibility = value > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    // ---------------- UniFetcher: Action needed ----------------
+
+    private bool IsDark => MainGrid.ActualTheme == ElementTheme.Dark;
+
+    private static Windows.UI.Color Rgb(byte r, byte g, byte b) => Windows.UI.Color.FromArgb(0xFF, r, g, b);
+
+    private Windows.UI.Color Orange => IsDark ? Rgb(0xFF, 0xB7, 0x4D) : Rgb(0xE6, 0x7E, 0x00);
+
+    /// <summary>Everything waiting for you: failed rows from now, plus links kept from before UniFetcher was closed, by site.</summary>
+    private async Task<List<(string Site, List<string> Titles, FailureReason Reason, string FirstUrl)>> GetWaitingGroupsAsync()
+    {
+        var groups = new Dictionary<string, (List<string> Titles, FailureReason Reason, string FirstUrl, HashSet<string> Urls)>();
+        foreach (var row in _downloadRows.Values.Where(r => r.NeedsAction))
+        {
+            if (!groups.TryGetValue(row.Site, out var g))
+            {
+                g = (new List<string>(), row.Reason, row.Url, new HashSet<string>());
+                groups[row.Site] = g;
+            }
+            if (g.Urls.Add(row.Url))
+            {
+                g.Titles.Add(row.Title);
+            }
+        }
+        foreach (var link in await _controller.GetWaitingLinksAsync())
+        {
+            if (!groups.TryGetValue(link.Site, out var g))
+            {
+                g = (new List<string>(), link.Reason, link.Url, new HashSet<string>());
+                groups[link.Site] = g;
+            }
+            if (g.Urls.Add(link.Url))
+            {
+                g.Titles.Add(string.IsNullOrEmpty(link.Options.SaveFilename) ? link.Url : link.Options.SaveFilename);
+            }
+        }
+        return groups.Select(x => (x.Key, x.Value.Titles, x.Value.Reason, x.Value.FirstUrl)).OrderBy(x => x.Key).ToList();
+    }
+
+    private async Task UpdateActionNeededBannerAsync()
+    {
+        var groups = await GetWaitingGroupsAsync();
+        var videos = groups.Sum(g => g.Titles.Count);
+        SetBadge(InfoBadgeDownloadsActionNeeded, videos);
+        if (videos == 0)
+        {
+            BannerActionNeeded.Visibility = Visibility.Collapsed;
+            NavDownloadsActionNeeded.Foreground = null;
+            return;
+        }
+        BannerActionNeeded.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(IsDark ? Rgb(0x4A, 0x2E, 0x00) : Rgb(0xFF, 0xE6, 0xC2));
+        IcnBannerActionNeeded.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Orange);
+        NavDownloadsActionNeeded.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Orange);
+        LblBannerActionNeeded.Text = _translationService._n("{0} video needs your action", "{0} videos need your action", videos, videos) + " · " + _translationService._n("{0} site", "{0} sites", groups.Count, groups.Count);
+        BannerActionNeeded.Visibility = Visibility.Visible;
+    }
+
+    private async Task RenderActionNeededAsync()
+    {
+        var groups = await GetWaitingGroupsAsync();
+        PanelActionNeeded.Children.Clear();
+        if (groups.Count == 0)
+        {
+            ViewStackDownloads.SelectedIndex = 0;
+            return;
+        }
+        PanelActionNeeded.Children.Add(new TextBlock
+        {
+            Text = _translationService._("These need you: open the site in the UniFetcher browser, log in or complete the check, then press Done. UniFetcher then retries every waiting video from that site with a fresh session. Nothing here expires."),
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.8,
+            Margin = new Thickness(0, 0, 0, 6)
+        });
+        foreach (var group in groups)
+        {
+            var card = new Border
+            {
+                Padding = new Thickness(16),
+                CornerRadius = new CornerRadius(6),
+                BorderThickness = new Thickness(2),
+                BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Orange),
+                Background = Application.Current.Resources.TryGetValue("CardBackgroundFillColorDefaultBrush", out var bg) ? bg as Microsoft.UI.Xaml.Media.Brush : null
+            };
+            var grid = new Grid { ColumnSpacing = 12 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var text = new StackPanel { Spacing = 2 };
+            text.Children.Add(new TextBlock { Text = group.Site, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 16 });
+            text.Children.Add(new TextBlock { Text = _translationService._n("{0} video waiting", "{0} videos waiting", group.Titles.Count, group.Titles.Count) + " · " + group.Reason.Label(_translationService), Opacity = 0.8 });
+            text.Children.Add(new TextBlock { Text = group.Reason.Explanation(_translationService), TextWrapping = TextWrapping.Wrap, FontSize = 12, Opacity = 0.7 });
+            var titles = string.Join("\n", group.Titles.Take(8)) + (group.Titles.Count > 8 ? "\n" + _translationService._("…and {0} more", group.Titles.Count - 8) : string.Empty);
+            text.Children.Add(new TextBlock { Text = titles, TextWrapping = TextWrapping.Wrap, FontSize = 12, Opacity = 0.6, Margin = new Thickness(0, 4, 0, 0) });
+            grid.Children.Add(text);
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+            var open = new Button { Content = _translationService._("Open") };
+            ToolTipService.SetToolTip(open, _translationService._("Opens the site in the UniFetcher browser (not your everyday browser)"));
+            open.Click += async (_, _) => await _controller.OpenInProfileAsync(group.FirstUrl);
+            var done = new Button { Content = _translationService._("Done"), Style = Application.Current.Resources["AccentButtonStyle"] as Style };
+            ToolTipService.SetToolTip(done, _translationService._("Retry every waiting video from this site"));
+            done.Click += async (_, _) =>
+            {
+                done.IsEnabled = false;
+                await _controller.DoneForSiteAsync(group.Site);
+                UpdateDownloadsList();
+            };
+            var remove = new Button { Content = new FontIcon { Glyph = "\uE74D", FontSize = 14 } };
+            ToolTipService.SetToolTip(remove, _translationService._("Remove these from the list (nothing is downloaded)"));
+            remove.Click += async (_, _) =>
+            {
+                await _controller.RemoveWaitingSiteAsync(group.Site);
+                UpdateDownloadsList();
+            };
+            buttons.Children.Add(open);
+            buttons.Children.Add(done);
+            buttons.Children.Add(remove);
+            Grid.SetColumn(buttons, 1);
+            grid.Children.Add(buttons);
+            card.Child = grid;
+            PanelActionNeeded.Children.Add(card);
+        }
+        ViewStackDownloads.SelectedIndex = 2;
+    }
+
+    private void ViewActionNeeded(object? sender, RoutedEventArgs e)
+    {
+        ViewStack.SelectedIndex = (int)Pages.Downloads;
+        NavViewDownloads.SelectedItem = NavDownloadsActionNeeded;
+        UpdateDownloadsList();
+    }
+
+    private async void ResumeStopped(object? sender, RoutedEventArgs e) => await _controller.ResumeStoppedAsync();
+
+    private async void ClearFailedAndStopped(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = _translationService._("Clear failed and stopped downloads?"),
+            Content = _translationService._("They're removed from the list, including the Action needed list. Finished downloads and your files aren't touched."),
+            PrimaryButtonText = _translationService._("Clear"),
+            CloseButtonText = _translationService._("Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            RequestedTheme = MainGrid.ActualTheme,
+            XamlRoot = MainGrid.XamlRoot
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+        foreach (var id in await _controller.ClearFailedAndStoppedAsync())
+        {
+            _downloadRows.Remove(id);
+        }
+        UpdateDownloadsList();
+    }
+
+    private async void ShowColourKey(object? sender, RoutedEventArgs e)
+    {
+        var panel = new StackPanel { Spacing = 10 };
+        void Row(Windows.UI.Color? colour, string label, string meaning)
+        {
+            var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+            line.Children.Add(new Border
+            {
+                Width = 22,
+                Height = 22,
+                CornerRadius = new CornerRadius(4),
+                BorderThickness = new Thickness(colour is null ? 1 : 3),
+                BorderBrush = colour is null ? (Application.Current.Resources.TryGetValue("CardStrokeColorDefaultBrush", out var b) ? b as Microsoft.UI.Xaml.Media.Brush : null) : new Microsoft.UI.Xaml.Media.SolidColorBrush(colour.Value)
+            });
+            var text = new StackPanel();
+            text.Children.Add(new TextBlock { Text = label, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            text.Children.Add(new TextBlock { Text = meaning, TextWrapping = TextWrapping.Wrap, Opacity = 0.8, MaxWidth = 380 });
+            line.Children.Add(text);
+            panel.Children.Add(line);
+        }
+        var grey = Application.Current.Resources.TryGetValue("ControlStrongStrokeColorDefault", out var g) && g is Windows.UI.Color gc ? gc : Rgb(0x88, 0x88, 0x88);
+        Row(Orange, _translationService._("Orange: needs your action"), _translationService._("A login, a \"verify you are human\" check, or a site blocking your VPN. See Action needed."));
+        Row(IsDark ? Rgb(0xE5, 0x39, 0x35) : Rgb(0xC6, 0x28, 0x28), _translationService._("Red: failed"), _translationService._("It can't be downloaded (e.g. site not supported, removed, DRM). The status says why."));
+        Row(grey, _translationService._("Grey: stopped"), _translationService._("You stopped it. Downloads → Resume Stopped puts it back in the queue."));
+        Row(null, _translationService._("No colour"), _translationService._("Queued, downloading or finished."));
+        var dialog = new ContentDialog
+        {
+            Title = _translationService._("What the colours mean"),
+            Content = panel,
+            CloseButtonText = _translationService._("Close"),
+            RequestedTheme = MainGrid.ActualTheme,
+            XamlRoot = MainGrid.XamlRoot
+        };
+        await dialog.ShowAsync();
     }
 }

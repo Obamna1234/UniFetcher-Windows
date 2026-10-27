@@ -1,6 +1,8 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Nickvision.Parabolic.Shared.Helpers;
 using Nickvision.Desktop.Globalization;
 using Nickvision.Parabolic.Shared.Events;
 using Nickvision.Parabolic.Shared.Models;
@@ -38,6 +40,21 @@ public sealed partial class DownloadRow : UserControl
 
     public DownloadStatus Status { get; private set; }
 
+    /// <summary>UniFetcher: plain-language reason when it failed.</summary>
+    public FailureReason Reason { get; private set; }
+
+    /// <summary>UniFetcher: failed in a way only you can fix (login, person check, VPN): shown under "Action needed".</summary>
+    public bool NeedsAction => Status == DownloadStatus.Error && Reason.NeedsAction();
+
+    /// <summary>UniFetcher: the website this download comes from.</summary>
+    public string Site { get; private set; } = string.Empty;
+
+    public string Url { get; private set; } = string.Empty;
+
+    public string Title => LblTitle.Text;
+
+    private DownloadCompletedEventArgs? _completedArgs;
+
     public DownloadRow(IThumbnailService thumbnailService, ITranslationService translator)
     {
         InitializeComponent();
@@ -53,6 +70,9 @@ public sealed partial class DownloadRow : UserControl
         LblPlay.Text = _translator._("Play");
         LblOpenFolder.Text = _translator._("Open");
         LblRetry.Text = _translator._("Retry");
+        LblCopyDiagnostic.Text = _translator._("Copy diagnostic");
+        ToolTipService.SetToolTip(BtnCopyDiagnostic, _translator._("Copies what went wrong and what UniFetcher tried, with cookies and private details removed, for a bug report"));
+        ActualThemeChanged += (_, _) => UpdateBorder();
     }
 
     public async Task TriggerAddedStateAsync(DownloadAddedEventArgs args)
@@ -65,6 +85,8 @@ public sealed partial class DownloadRow : UserControl
         await thumbnailSource.SetBitmapAsync(thumbnailBitmap);
         _id = args.Id;
         _path = args.Path;
+        Url = args.Url.ToString();
+        Site = SiteSessionService.SiteOf(args.Url);
         IcnStatus.Glyph = "\uE896";
         ImgThumbnail.Source = thumbnailSource;
         LblTitle.Text = Path.GetFileName(_path);
@@ -102,11 +124,16 @@ public sealed partial class DownloadRow : UserControl
         ScrollLog.ChangeView(null, ScrollLog.ScrollableHeight, null);
         ProgBar.Value = 1.0;
         ProgBar.IsIndeterminate = false;
+        _completedArgs = args;
         if (args.Status == DownloadStatus.Error)
         {
             Status = DownloadStatus.Error;
-            IcnStatus.Glyph = "\uEA39";
-            LblStatus.Text = _translator._("Error");
+            Reason = args.Reason == FailureReason.None ? FailureReason.Other : args.Reason;
+            IcnStatus.Glyph = Reason.NeedsAction() ? "\uE7BA" : "\uEA39";
+            // UniFetcher: one plain-language reason instead of just "Error"
+            LblStatus.Text = string.IsNullOrEmpty(args.CookieSource) ? Reason.Label(_translator) : $"{Reason.Label(_translator)} · 🍪";
+            ToolTipService.SetToolTip(LblStatus, Reason.Explanation(_translator) + (string.IsNullOrEmpty(args.CookieSource) ? string.Empty : "\n" + _translator._("Cookies were used, from: {0}", args.CookieSource)));
+            BtnCopyDiagnostic.Visibility = Visibility.Visible;
             ViewStackButtons.SelectedIndex = (int)ButtonsPage.Error;
         }
         else if (args.Status == DownloadStatus.Success)
@@ -116,6 +143,47 @@ public sealed partial class DownloadRow : UserControl
             LblStatus.Text = _translator._("Success");
             ViewStackButtons.SelectedIndex = (int)ButtonsPage.Done;
         }
+        UpdateBorder();
+    }
+
+    /// <summary>
+    /// UniFetcher colour code: orange = needs your action, red = failed and can't be downloaded,
+    /// grey = stopped by you, no colour = queued, downloading or finished. Help → What the colours mean explains it.
+    /// </summary>
+    public void UpdateBorder()
+    {
+        var dark = ActualTheme == ElementTheme.Dark;
+        if (NeedsAction)
+        {
+            RowRoot.BorderThickness = new Thickness(2);
+            RowRoot.BorderBrush = new SolidColorBrush(dark ? Color(0xFF, 0xB7, 0x4D) : Color(0xE6, 0x7E, 0x00));
+        }
+        else if (Status == DownloadStatus.Error)
+        {
+            RowRoot.BorderThickness = new Thickness(2);
+            RowRoot.BorderBrush = new SolidColorBrush(dark ? Color(0xE5, 0x39, 0x35) : Color(0xC6, 0x28, 0x28));
+        }
+        else if (Status == DownloadStatus.Stopped)
+        {
+            RowRoot.BorderThickness = new Thickness(2);
+            RowRoot.BorderBrush = Application.Current.Resources.TryGetValue("ControlStrongStrokeColorDefaultBrush", out var grey) ? grey as Brush : new SolidColorBrush(Color(0x88, 0x88, 0x88));
+        }
+        else
+        {
+            RowRoot.BorderThickness = new Thickness(1);
+            RowRoot.BorderBrush = Application.Current.Resources.TryGetValue("CardStrokeColorDefaultBrush", out var normal) ? normal as Brush : null;
+        }
+    }
+
+    private static Windows.UI.Color Color(byte r, byte g, byte b) => Windows.UI.Color.FromArgb(0xFF, r, g, b);
+
+    private void CopyDiagnostic(object sender, RoutedEventArgs e)
+    {
+        var text = Diagnostic.Build(_completedArgs?.Url ?? Url, Reason, _completedArgs?.CookieSource ?? string.Empty, _completedArgs?.Steps ?? [], _log, _translator);
+        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        package.SetText(text);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+        LblCopyDiagnostic.Text = _translator._("Copied");
     }
 
     public void TriggerPausedState()
@@ -184,7 +252,9 @@ public sealed partial class DownloadRow : UserControl
         LblStatus.Text = _translator._("Stopped");
         ProgBar.Value = 1.0;
         ProgBar.IsIndeterminate = false;
+        BtnCopyDiagnostic.Visibility = Visibility.Collapsed;
         ViewStackButtons.SelectedIndex = (int)ButtonsPage.Error;
+        UpdateBorder();
     }
 
     private async void OpenFolder(object sender, RoutedEventArgs e)

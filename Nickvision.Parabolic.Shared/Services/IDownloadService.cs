@@ -21,6 +21,9 @@ public interface IDownloadService
     int QueuedCount { get; }
     int CompletedCount { get; }
     int FailedCount { get; }
+    int ActionNeededCount { get; }
+    int StoppedCount { get; }
+    int FinishedCount { get; }
 
     int RemainingCount => DownloadingCount + QueuedCount;
 
@@ -28,6 +31,10 @@ public interface IDownloadService
     Task AddAsync(IReadOnlyList<DownloadOptions> options, bool excludeFromHistory);
     IReadOnlyList<int> ClearCompleted();
     IReadOnlyList<int> ClearQueued();
+    IReadOnlyList<int> ClearFailedAndStopped();
+    Task ResumeStoppedAsync();
+    IReadOnlyList<int> WaitingIdsForSite(string site);
+    bool IsInQueue(string url);
     bool Pause(int id);
     Task RecoverAllAsync();
     bool Resume(int id);

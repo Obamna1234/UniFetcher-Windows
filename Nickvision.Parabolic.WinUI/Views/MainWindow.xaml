@@ -125,6 +125,18 @@
                                 </MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
 
+                            <MenuFlyoutItem x:Name="MenuResumeStopped" Click="ResumeStopped">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE768;"/>
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+
+                            <MenuFlyoutItem x:Name="MenuClearFailedStopped" Click="ClearFailedAndStopped">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE894;"/>
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+
                             <MenuFlyoutSeparator/>
 
                             <MenuFlyoutItem x:Name="MenuClearAllQueued" Click="ClearAllQueued">
@@ -166,6 +178,12 @@
                             </MenuFlyoutItem>
 
                             <MenuFlyoutSeparator/>
+
+                            <MenuFlyoutItem x:Name="MenuColourKey" Click="ShowColourKey">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE790;"/>
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
 
                             <MenuFlyoutItem x:Name="MenuAbout" Click="About">
                                 <MenuFlyoutItem.KeyboardAccelerators>
@@ -310,7 +328,26 @@
                             </CommandBar>
                         </Grid>
 
-                        <MenuFlyoutSeparator Grid.Row="1" HorizontalAlignment="Stretch"/>
+                        <StackPanel Grid.Row="1" Orientation="Vertical">
+                            <MenuFlyoutSeparator HorizontalAlignment="Stretch"/>
+
+                            <!-- UniFetcher: shown while anything needs your action -->
+                            <Border x:Name="BannerActionNeeded" Margin="12,6,12,6" Padding="12,8,12,8" CornerRadius="{ThemeResource ControlCornerRadius}" Visibility="Collapsed">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <FontIcon x:Name="IcnBannerActionNeeded" Grid.Column="0" FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE7BA;"/>
+
+                                    <TextBlock x:Name="LblBannerActionNeeded" Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap"/>
+
+                                    <Button x:Name="BtnBannerView" Grid.Column="2" Click="ViewActionNeeded"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
 
                         <NavigationView x:Name="NavViewDownloads" Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                         IsPaneToggleButtonVisible="False" IsBackButtonVisible="Collapsed" IsSettingsVisible="False"
@@ -338,6 +375,16 @@
 
                                     <NavigationViewItem.InfoBadge>
                                         <InfoBadge x:Name="InfoBadgeDownloadsRunning" Style="{StaticResource AttentionValueInfoBadgeStyle}" Visibility="Collapsed"/>
+                                    </NavigationViewItem.InfoBadge>
+                                </NavigationViewItem>
+
+                                <NavigationViewItem x:Name="NavDownloadsActionNeeded" Tag="5">
+                                    <NavigationViewItem.Icon>
+                                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE7BA;"/>
+                                    </NavigationViewItem.Icon>
+
+                                    <NavigationViewItem.InfoBadge>
+                                        <InfoBadge x:Name="InfoBadgeDownloadsActionNeeded" Style="{StaticResource AttentionValueInfoBadgeStyle}" Visibility="Collapsed"/>
                                     </NavigationViewItem.InfoBadge>
                                 </NavigationViewItem>
 
@@ -370,6 +417,16 @@
                                         <InfoBadge x:Name="InfoBadgeDownloadsFailed" Style="{StaticResource AttentionValueInfoBadgeStyle}" Visibility="Collapsed"/>
                                     </NavigationViewItem.InfoBadge>
                                 </NavigationViewItem>
+
+                                <NavigationViewItem x:Name="NavDownloadsStopped" Tag="6">
+                                    <NavigationViewItem.Icon>
+                                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE71A;"/>
+                                    </NavigationViewItem.Icon>
+
+                                    <NavigationViewItem.InfoBadge>
+                                        <InfoBadge x:Name="InfoBadgeDownloadsStopped" Style="{StaticResource AttentionValueInfoBadgeStyle}" Visibility="Collapsed"/>
+                                    </NavigationViewItem.InfoBadge>
+                                </NavigationViewItem>
                             </NavigationView.MenuItems>
 
                             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -394,6 +451,9 @@
                                                 <StackLayout Spacing="6"/>
                                             </ItemsRepeater.Layout>
                                         </ItemsRepeater>
+
+                                        <!-- UniFetcher: "Action needed", grouped by site (built in code) -->
+                                        <StackPanel x:Name="PanelActionNeeded" Margin="12,6,12,0" Spacing="6"/>
                                     </nickvision:ViewStack.Pages>
                                 </nickvision:ViewStack>
                             </ScrollViewer>

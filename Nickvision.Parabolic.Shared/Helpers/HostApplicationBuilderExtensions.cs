@@ -35,6 +35,7 @@ public static class HostApplicationBuilderExtensions
             builder.Services.AddSingleton<IDenoExecutableService, DenoExecutableService>();
             builder.Services.AddSingleton<IDiscoveryService, DiscoveryService>();
             builder.Services.AddSingleton<IDownloadRegistryService, DownloadRegistryService>();
+            builder.Services.AddSingleton<IActionNeededService, ActionNeededService>();
             builder.Services.AddSingleton<IDownloadService, DownloadService>();
             builder.Services.AddSingleton<IHistoryService, HistoryService>();
             builder.Services.AddSingleton<IRecoveryService, RecoveryService>();
