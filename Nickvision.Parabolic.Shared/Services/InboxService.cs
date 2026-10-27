@@ -34,6 +34,9 @@ public interface IInboxService
 {
     /// <summary>Links sent from the browser extension. Raised on a background thread.</summary>
     event EventHandler<LinksReceivedEventArgs>? LinksReceived;
+
+    /// <summary>UniFetcher was started again: show the existing window. Raised on a background thread.</summary>
+    event EventHandler? ActivationRequested;
 }
 
 /// <summary>
@@ -53,6 +56,7 @@ public class InboxService : BackgroundService, IInboxService
     private readonly IFirefoxProfileService _profile;
 
     public event EventHandler<LinksReceivedEventArgs>? LinksReceived;
+    public event EventHandler? ActivationRequested;
 
     public InboxService(ILogger<InboxService> logger, AppInfo appInfo, IFirefoxProfileService profile)
     {
@@ -108,7 +112,18 @@ public class InboxService : BackgroundService, IInboxService
         {
             using var doc = JsonDocument.Parse(line);
             var root = doc.RootElement;
-            if (root.GetProperty("type").GetString() != "links")
+            var type = root.GetProperty("type").GetString();
+            if (type == "activate")
+            {
+                // Someone started UniFetcher again: bring this window forward (and open a link it was started with)
+                ActivationRequested?.Invoke(this, EventArgs.Empty);
+                if (root.TryGetProperty("urls", out var startUrls) && startUrls.GetArrayLength() > 0 && Uri.TryCreate(startUrls[0].GetString(), UriKind.Absolute, out var startUrl))
+                {
+                    LinksReceived?.Invoke(this, new LinksReceivedEventArgs([startUrl], false, string.Empty));
+                }
+                return true;
+            }
+            if (type != "links")
             {
                 return false;
             }

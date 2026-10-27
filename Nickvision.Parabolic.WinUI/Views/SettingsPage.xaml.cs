@@ -34,6 +34,7 @@ public sealed partial class SettingsPage : Page
         NavDownloads.Content = _translationService._("Downloads");
         NavDownloader.Content = _translationService._("Downloader");
         NavConverter.Content = _translationService._("Converter");
+        NavPrivacy.Content = _translationService._("Privacy");
         RowTheme.Header = _translationService._("Theme");
         CmbTheme.ItemsSource = _controller.Themes.ToBindableSelectonItems();
         RowTranslationLanguage.Header = _translationService._("Translation Language");

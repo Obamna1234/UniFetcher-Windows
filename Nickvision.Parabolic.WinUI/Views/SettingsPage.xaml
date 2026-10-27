@@ -44,6 +44,12 @@
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE90F;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+
+                <NavigationViewItem x:Name="NavPrivacy" Tag="4">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE72E;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -92,78 +98,6 @@
                                 <ToggleSwitch x:Name="TglPreviewUpdates" Toggled="Tgl_Toggled"/>
                             </community:SettingsCard>
 
-                            <!-- UniFetcher: yt-dlp and ffmpeg updates -->
-                            <community:SettingsExpander x:Name="RowToolUpdates" IsExpanded="True">
-                                <community:SettingsExpander.HeaderIcon>
-                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE895;"/>
-                                </community:SettingsExpander.HeaderIcon>
-
-                                <Button x:Name="BtnCheckToolsNow" Click="CheckToolsNow"/>
-
-                                <community:SettingsExpander.Items>
-                                    <community:SettingsCard x:Name="RowToolStatus">
-                                        <community:SettingsCard.Description>
-                                            <TextBlock x:Name="LblToolStatus" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
-                                        </community:SettingsCard.Description>
-                                    </community:SettingsCard>
-
-                                    <community:SettingsCard x:Name="RowToolUpdateMode">
-                                        <ComboBox x:Name="CmbToolUpdateMode" SelectionChanged="Cmb_SelectionChanged">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate x:DataType="helpers:BindableSelectionItem">
-                                                    <TextBlock Text="{x:Bind Label}"/>
-                                                </DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
-                                    </community:SettingsCard>
-
-                                    <community:SettingsCard x:Name="RowYtdlpChannel">
-                                        <ComboBox x:Name="CmbYtdlpChannel" SelectionChanged="Cmb_SelectionChanged">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate x:DataType="helpers:BindableSelectionItem">
-                                                    <TextBlock Text="{x:Bind Label}"/>
-                                                </DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
-                                    </community:SettingsCard>
-
-                                    <community:SettingsCard x:Name="RowToolRollBack">
-                                        <Button x:Name="BtnToolRollBack" Click="RollBackTools"/>
-                                    </community:SettingsCard>
-                                </community:SettingsExpander.Items>
-                            </community:SettingsExpander>
-
-                            <community:SettingsCard x:Name="RowPreventSuspend">
-                                <community:SettingsCard.HeaderIcon>
-                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE7E8;"/>
-                                </community:SettingsCard.HeaderIcon>
-
-                                <ToggleSwitch x:Name="TglPreventSuspend" Toggled="Tgl_Toggled"/>
-                            </community:SettingsCard>
-
-                            <community:SettingsCard x:Name="RowHistoryLength">
-                                <community:SettingsCard.HeaderIcon>
-                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE81C;"/>
-                                </community:SettingsCard.HeaderIcon>
-
-                                <ComboBox x:Name="CmbHistoryLength" SelectionChanged="Cmb_SelectionChanged">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate x:DataType="helpers:BindableSelectionItem">
-                                            <TextBlock Text="{x:Bind Label}"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                            </community:SettingsCard>
-
-                            <!-- UniFetcher: privacy -->
-                            <community:SettingsCard x:Name="RowIncognito">
-                                <community:SettingsCard.HeaderIcon>
-                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE727;"/>
-                                </community:SettingsCard.HeaderIcon>
-
-                                <ToggleSwitch x:Name="TglIncognito" Toggled="Tgl_Toggled"/>
-                            </community:SettingsCard>
-
                             <community:SettingsCard x:Name="RowNotificationMode">
                                 <community:SettingsCard.HeaderIcon>
                                     <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xEA8F;"/>
@@ -178,16 +112,6 @@
                                 </ComboBox>
                             </community:SettingsCard>
 
-                            <community:SettingsCard x:Name="RowClearHistory">
-                                <community:SettingsCard.HeaderIcon>
-                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE74D;"/>
-                                </community:SettingsCard.HeaderIcon>
-
-                                <StackPanel Orientation="Horizontal" Spacing="12">
-                                    <CheckBox x:Name="ChkClearProfileToo"/>
-                                    <Button x:Name="BtnClearHistory" Click="ClearHistoryAndCache"/>
-                                </StackPanel>
-                            </community:SettingsCard>
                         </StackPanel>
 
                         <StackPanel Spacing="6">
@@ -203,6 +127,14 @@
                                 </community:SettingsCard.HeaderIcon>
 
                                 <NumberBox x:Name="NumActiveDownloads" Minimum="1" Maximum="5" SpinButtonPlacementMode="Inline" ValueChanged="Num_ValueChanged"/>
+                            </community:SettingsCard>
+
+                            <community:SettingsCard x:Name="RowPreventSuspend">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE7E8;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <ToggleSwitch x:Name="TglPreventSuspend" Toggled="Tgl_Toggled"/>
                             </community:SettingsCard>
 
                             <community:SettingsCard x:Name="RowTempFolder">
@@ -320,6 +252,47 @@
                                     <EntranceThemeTransition/>
                                 </TransitionCollection>
                             </StackPanel.Transitions>
+
+                            <!-- UniFetcher: yt-dlp and ffmpeg updates -->
+                            <community:SettingsExpander x:Name="RowToolUpdates" IsExpanded="True">
+                                <community:SettingsExpander.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE895;"/>
+                                </community:SettingsExpander.HeaderIcon>
+
+                                <Button x:Name="BtnCheckToolsNow" Click="CheckToolsNow"/>
+
+                                <community:SettingsExpander.Items>
+                                    <community:SettingsCard x:Name="RowToolStatus">
+                                        <community:SettingsCard.Description>
+                                            <TextBlock x:Name="LblToolStatus" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+                                        </community:SettingsCard.Description>
+                                    </community:SettingsCard>
+
+                                    <community:SettingsCard x:Name="RowToolUpdateMode">
+                                        <ComboBox x:Name="CmbToolUpdateMode" SelectionChanged="Cmb_SelectionChanged">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="helpers:BindableSelectionItem">
+                                                    <TextBlock Text="{x:Bind Label}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </community:SettingsCard>
+
+                                    <community:SettingsCard x:Name="RowYtdlpChannel">
+                                        <ComboBox x:Name="CmbYtdlpChannel" SelectionChanged="Cmb_SelectionChanged">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="helpers:BindableSelectionItem">
+                                                    <TextBlock Text="{x:Bind Label}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </community:SettingsCard>
+
+                                    <community:SettingsCard x:Name="RowToolRollBack">
+                                        <Button x:Name="BtnToolRollBack" Click="RollBackTools"/>
+                                    </community:SettingsCard>
+                                </community:SettingsExpander.Items>
+                            </community:SettingsExpander>
 
                             <community:SettingsCard x:Name="RowUsePartFiles">
                                 <community:SettingsCard.HeaderIcon>
@@ -602,6 +575,48 @@
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
                             </ListView>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <StackPanel.Transitions>
+                                <TransitionCollection>
+                                    <EntranceThemeTransition/>
+                                </TransitionCollection>
+                            </StackPanel.Transitions>
+
+                            <community:SettingsCard x:Name="RowHistoryLength">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE81C;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <ComboBox x:Name="CmbHistoryLength" SelectionChanged="Cmb_SelectionChanged">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="helpers:BindableSelectionItem">
+                                            <TextBlock Text="{x:Bind Label}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </community:SettingsCard>
+
+                            <community:SettingsCard x:Name="RowIncognito">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE727;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <ToggleSwitch x:Name="TglIncognito" Toggled="Tgl_Toggled"/>
+                            </community:SettingsCard>
+
+                            <community:SettingsCard x:Name="RowClearHistory">
+                                <community:SettingsCard.HeaderIcon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE74D;"/>
+                                </community:SettingsCard.HeaderIcon>
+
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <CheckBox x:Name="ChkClearProfileToo"/>
+                                    <Button x:Name="BtnClearHistory" Click="ClearHistoryAndCache"/>
+                                </StackPanel>
+                            </community:SettingsCard>
+
                         </StackPanel>
                     </nickvision:ViewStack.Pages>
                 </nickvision:ViewStack>

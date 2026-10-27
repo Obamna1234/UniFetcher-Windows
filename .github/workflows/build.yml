@@ -54,3 +54,44 @@ jobs:
         with:
           name: UniFetcher-${{ env.VERSION }}-x64
           path: out/*
+      - name: "Start-up test: install, open, close, open again"
+        # Catches "UniFetcher doesn't open" problems that a successful build can't show.
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Continue"
+          $setup = Get-ChildItem out -Filter "*Setup-x64.exe" | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/LOG=$env:RUNNER_TEMP\install.log" -Wait
+          $exe = Join-Path $env:LOCALAPPDATA "Programs\UniFetcher\Release\UniFetcher.exe"
+          $data = Join-Path $env:LOCALAPPDATA "UniFetcher"
+          if (-not (Test-Path $exe)) { Get-Content "$env:RUNNER_TEMP\install.log" -Tail 40; echo "::error title=Installer::UniFetcher.exe was not installed to $exe"; exit 1 }
+          function Show-Logs {
+            foreach ($f in "app.log", "crash.log") {
+              $p = Join-Path $data $f
+              if (Test-Path $p) { echo "----- $f -----"; Get-Content $p -Tail 60 }
+            }
+            Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-10)} -ErrorAction SilentlyContinue |
+              Where-Object { $_.ProviderName -in 'Application Error','.NET Runtime','Windows Error Reporting' } |
+              Select-Object -First 5 | ForEach-Object { echo "----- Windows event: $($_.ProviderName) -----"; $_.Message }
+          }
+          $failed = $false
+          foreach ($round in 1, 2) {
+            $p = Start-Process $exe -PassThru
+            Start-Sleep -Seconds 25
+            if ($p.HasExited) {
+              echo "::error title=UniFetcher crashed on start (round $round)::Exit code $($p.ExitCode). See the log below."
+              Show-Logs; $failed = $true; break
+            }
+            echo "Round ${round}: UniFetcher is running."
+            $null = $p.CloseMainWindow()
+            if (-not $p.WaitForExit(30000)) {
+              echo "::error title=UniFetcher kept running after closing (round $round)::The process was still alive 30 s after its window was closed."
+              Show-Logs; $p.Kill($true); $failed = $true; break
+            }
+            echo "Round ${round}: UniFetcher closed properly."
+            if (Get-Process UniFetcher -ErrorAction SilentlyContinue) {
+              echo "::error title=UniFetcher left a background process (round $round)::"
+              $failed = $true; break
+            }
+          }
+          if (-not $failed) { Show-Logs }
+          if ($failed) { exit 1 }

@@ -36,6 +36,9 @@ public class MainWindowController
     /// <summary>UniFetcher: links sent from the browser extension (raised on a background thread).</summary>
     public event EventHandler<LinksReceivedEventArgs>? LinksFromExtension;
 
+    /// <summary>UniFetcher was started again while already open (raised on a background thread).</summary>
+    public event EventHandler? ShowWindowRequested;
+
     /// <summary>UniFetcher: a Windows notification to show (title, text), already made discreet if that setting is on. Raised on a background thread.</summary>
     public event EventHandler<(string Title, string Text)>? WindowsNotificationRequested;
     private readonly IYtdlpExecutableService _ytdlpExecutableService;
@@ -60,6 +63,7 @@ public class MainWindowController
         _toolUpdateService = toolUpdateService;
         _sessions = sessions;
         inboxService.LinksReceived += (_, e) => LinksFromExtension?.Invoke(this, e);
+        inboxService.ActivationRequested += (_, _) => ShowWindowRequested?.Invoke(this, EventArgs.Empty);
         // Windows notifications: one per normal download, one per finished Bulk Import (not one per bulk link)
         downloadService.DownloadFinished += (_, e) =>
         {

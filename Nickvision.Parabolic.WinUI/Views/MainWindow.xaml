@@ -29,7 +29,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <ImageIcon Grid.Column="0" VerticalAlignment="Center" Height="18" Source="/Assets/unifetcher.ico"/>
+                    <ImageIcon Grid.Column="0" VerticalAlignment="Center" Height="18" Source="/Assets/unifetcher.png"/>
 
                     <TextBlock x:Name="LblTitle" Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}"/>
 
@@ -216,7 +216,7 @@
             <nickvision:ViewStack x:Name="ViewStack" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                 <nickvision:ViewStack.Pages>
                     <StackPanel Margin="48,48,48,48" HorizontalAlignment="Stretch" Orientation="Vertical" Spacing="12">
-                        <Image HorizontalAlignment="Left" Width="64" Height="64" Source="/Assets/unifetcher.ico"/>
+                        <Image HorizontalAlignment="Left" Width="64" Height="64" Source="/Assets/unifetcher.png"/>
 
                         <TextBlock x:Name="LblHomeTitle" HorizontalAlignment="Left" Style="{ThemeResource TitleTextBlockStyle}"/>
 

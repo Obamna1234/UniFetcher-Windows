@@ -62,7 +62,8 @@ OutputBaseFilename=UniFetcher-{#MyAppVersion}-Setup-{#MyArch}
 SetupIconFile=..\resources\unifetcher.ico
 Compression=lzma
 SolidCompression=yes
-PrivilegesRequired=admin
+; UniFetcher installs just for you (in %LOCALAPPDATA%\Programs), so no administrator prompt is needed
+PrivilegesRequired=lowest
 CloseApplications=yes
 RestartIfNeededByRun=no
 
@@ -101,13 +102,13 @@ Source: "..\{#GetEnv('APP_FILES_PATH')}\*"; DestDir: "{app}\Release"; Flags: ign
 
 [Icons]
 Name: "{autoprograms}\{#MyAppShortName}"; Filename: "{app}\Release\{#MyAppExeName}"; Tasks: quicklaunchicon
-Name: "{commondesktop}\{#MyAppShortName}"; Filename: "{app}\Release\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppShortName}"; Filename: "{app}\Release\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
-Root: HKCR; Subkey: {#MyAppShortNameLower}; ValueType: "string"; ValueData: "URL:UniFetcher Protocol"; Flags: uninsdeletekey
-Root: HKCR; Subkey: {#MyAppShortNameLower}; ValueType: "string"; ValueName: "URL Protocol"; ValueData: ""
-Root: HKCR; Subkey: "{#MyAppShortNameLower}\DefaultIcon"; ValueType: "string"; ValueData: "{app}\Release\{#MyAppExeName},0"
-Root: HKCR; Subkey: "{#MyAppShortNameLower}\shell\open\command"; ValueType: "string"; ValueData: """{app}\Release\{#MyAppExeName}"" ""%1"""
+Root: HKA; Subkey: "Software\Classes\{#MyAppShortNameLower}"; ValueType: "string"; ValueData: "URL:UniFetcher Protocol"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\{#MyAppShortNameLower}"; ValueType: "string"; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\{#MyAppShortNameLower}\DefaultIcon"; ValueType: "string"; ValueData: "{app}\Release\{#MyAppExeName},0"
+Root: HKA; Subkey: "Software\Classes\{#MyAppShortNameLower}\shell\open\command"; ValueType: "string"; ValueData: """{app}\Release\{#MyAppExeName}"" ""%1"""
 
 [Run]
 Filename: "{app}\Release\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent unchecked

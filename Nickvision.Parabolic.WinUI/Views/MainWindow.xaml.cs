@@ -81,6 +81,15 @@ public sealed partial class MainWindow : Window
         eventsService.DownloadStartedFromQueue += (sender, e) => DispatcherQueue.TryEnqueue(() => Controller_DownloadStartedFromQueue(sender, e));
         eventsService.DownloadRetired += (sender, e) => DispatcherQueue.TryEnqueue(() => Controller_DownloadRetired(sender, e));
         _controller.LinksFromExtension += (sender, e) => DispatcherQueue.TryEnqueue(async () => await Controller_LinksFromExtensionAsync(e));
+        _controller.ShowWindowRequested += (_, _) => DispatcherQueue.TryEnqueue(() =>
+        {
+            if (AppWindow.Presenter is OverlappedPresenter presenter && presenter.State == OverlappedPresenterState.Minimized)
+            {
+                presenter.Restore();
+            }
+            AppWindow.Show();
+            Activate();
+        });
         // UniFetcher: Windows notifications only while UniFetcher isn't the window you're looking at
         _controller.WindowsNotificationRequested += (_, n) => DispatcherQueue.TryEnqueue(() =>
         {
@@ -231,11 +240,27 @@ public sealed partial class MainWindow : Window
                 await _controller.StopAllDownloadsAsync();
                 Close();
                 _serviceProvider.GetRequiredService<IHostApplicationLifetime>().StopApplication();
+                ExitWatchdog();
             }
             return;
         }
         _controller.WindowGeometry = this.Geometry;
         _serviceProvider.GetRequiredService<IHostApplicationLifetime>().StopApplication();
+        ExitWatchdog();
+    }
+
+    /// <summary>UniFetcher: if shutting down hangs, end the process anyway so it never lingers without a window.</summary>
+    private static void ExitWatchdog()
+    {
+        var thread = new System.Threading.Thread(() =>
+        {
+            System.Threading.Thread.Sleep(TimeSpan.FromSeconds(15));
+            Environment.Exit(0);
+        })
+        {
+            IsBackground = true
+        };
+        thread.Start();
     }
 
     private void App_AppNotificationSent(object? sender, AppNotificationSentEventArgs e)
@@ -633,6 +658,10 @@ public sealed partial class MainWindow : Window
         else
         {
             await addDownloadDialog.ShowAsync();
+        }
+        if (!string.IsNullOrEmpty(addDownloadDialog.ImportFilePath))
+        {
+            await GetBulkImportWindow().LoadFileAsync(addDownloadDialog.ImportFilePath);
         }
     }
 

@@ -1,6 +1,14 @@
 # Changelog
 
 ## Unreleased
+### Fixes from first test on a real PC
+- Installer no longer asks for administrator rights: it installs just for you.
+- Starting UniFetcher while it's open brings the window forward; a copy stuck in the background can be closed with one click; start-up errors show a message and are saved to crash.log; closing the window always ends the program.
+- Sharp logo inside the app (title bar, home page, About).
+- "Select Batch File" is now "Import links" (opens Bulk Import) with an ⓘ button listing the supported files.
+- Settings regrouped: yt-dlp and ffmpeg updates moved to Downloader, Prevent Suspend to Downloads, and a new Privacy page (history length, incognito, clear history).
+- Every build now installs and starts UniFetcher on GitHub's test PC, closes it and opens it again.
+
 ### Documents and temporary files
 - Bulk Import reads links from documents: PDF, Word (.docx/.doc), OpenDocument (.odt), RTF, e-mails (.eml), saved web pages (.mht), EPUB, Excel/PowerPoint, .url shortcuts and Samsung Notes (.sdocx, best effort). Works with Import from file and drag-and-drop.
 - Numbered link lists ("1. https://…"), links typed with backslashes, and long links wrapped onto the next line in PDFs are all read correctly.

@@ -67,7 +67,9 @@ public sealed partial class AddDownloadDialog : ContentDialog
         IsPrimaryButtonEnabled = false;
         TxtUrl.Header = _translationService._("Media URL");
         TxtUrl.PlaceholderText = _translationService._("Enter media url here");
-        LblSelectBatchFile.Text = _translationService._("Select Batch File");
+        LblSelectBatchFile.Text = _translationService._("Import links");
+        ToolTipService.SetToolTip(BtnImportInfo, _translationService._("Which files can I import?"));
+        LblImportInfo.Text = _translationService._("Pick a file that has links in it, and UniFetcher finds every web link and opens Bulk Import:\n\n• Lists and exports: plain text (.txt), numbered lists (1. https://…), bookmarks HTML, Firefox bookmark backups (.json), tab-manager exports (JSON, CSV, OneTab)\n• Documents: PDF, Word (.docx, .doc), OpenDocument (.odt), RTF, EPUB, Excel/PowerPoint\n• E-mails (.eml) and saved web pages (.mht)\n• Samsung Notes: export as PDF, Word or Text for best results (.sdocx files work on a best-effort basis)\n\nScanned or photographed pages can't be read. You can also drag a file onto the UniFetcher window.");
         TglUseAuthentication.OnContent = _translationService._("Use Authentication");
         TglUseAuthentication.OffContent = _translationService._("Use Authentication");
         CmbCredential.Header = _translationService._("Credential");
@@ -338,17 +340,21 @@ public sealed partial class AddDownloadDialog : ContentDialog
 
     private void TxtUrl_TextChanged(object? sender, TextChangedEventArgs e) => IsPrimaryButtonEnabled = !TxtUrl.Text.StartsWith("//") && Uri.TryCreate(TxtUrl.Text, UriKind.Absolute, out var _);
 
+    /// <summary>UniFetcher: a file picked with "Import links"; the main window opens it in Bulk Import after this dialog closes.</summary>
+    public string? ImportFilePath { get; private set; }
+
     private async void BtnSelectBatchFile_Click(object? sender, RoutedEventArgs e)
     {
         var picker = new FileOpenPicker(WindowId!.Value)
         {
             SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
-            FileTypeFilter = { ".txt" }
+            FileTypeFilter = { "*", ".txt", ".pdf", ".docx", ".doc", ".odt", ".rtf", ".sdocx", ".eml", ".mht", ".html", ".htm", ".json", ".csv", ".md", ".epub", ".xlsx", ".pptx", ".url" }
         };
         var file = await picker.PickSingleFileAsync();
         if (file is not null)
         {
-            TxtUrl.Text = new Uri(file.Path).ToString();
+            ImportFilePath = file.Path;
+            Hide();
         }
     }
 

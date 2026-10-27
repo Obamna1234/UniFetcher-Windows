@@ -25,7 +25,15 @@ A plain-language guide. Sections marked *(coming soon)* describe features still 
 2. Under the newest release, open **Assets** and download **`UniFetcher-<version>-Setup-x64.exe`**.
    - Only pick `-arm64` if your PC has an ARM processor (rare; e.g. Surface Pro X, Snapdragon laptops).
 3. Open the downloaded file. If you see a blue "Windows protected your PC" box, see the next section.
-4. Click through the installer. UniFetcher appears in the Start menu.
+4. Click through the installer. UniFetcher appears in the Start menu. It installs just for your Windows account (in `%LOCALAPPDATA%\Programs\UniFetcher`), so it doesn't ask for administrator rights, and you never need "Run as administrator".
+
+**Installed an early test build that asked for administrator rights?** Remove it first: **Start → Settings → Apps → Installed apps**, find **UniFetcher**, **⋯ → Uninstall**. Your settings and history are kept.
+
+**If UniFetcher doesn't open:**
+- Starting it while it's already open just brings its window to the front.
+- If an earlier copy got stuck in the background, UniFetcher asks whether to close it. Click **Yes**.
+- If it still won't open: press **Ctrl+Shift+Esc** (Task Manager), look for **UniFetcher** under **Processes** (or on the **Details** tab as `UniFetcher.exe`), select it, click **End task**, then start UniFetcher again.
+- If something stops it from starting, a message tells you, and the details are saved in `%LOCALAPPDATA%\UniFetcher\crash.log` (type that into the File Explorer address bar). Send that file's text with your bug report.
 
 **Portable version (no install):** download `UniFetcher-<version>-Portable-x64.zip`, right-click → **Extract All**, then double-click `UniFetcher.bat`. Its settings are kept in the same folder.
 

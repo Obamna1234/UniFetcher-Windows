@@ -22,15 +22,33 @@
                 <StackPanel Orientation="Vertical" Spacing="12" MinWidth="400">
                     <TextBox x:Name="TxtUrl" TextChanged="TxtUrl_TextChanged"/>
 
-                    <Button x:Name="BtnSelectBatchFile" HorizontalAlignment="Stretch" Click="BtnSelectBatchFile_Click">
-                        <Button.Content>
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8A5;" FontSize="18"/>
+                    <!-- UniFetcher: "Import links" opens Bulk Import with a file (lists, exports or documents) -->
+                    <Grid ColumnSpacing="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                                <TextBlock x:Name="LblSelectBatchFile"/>
-                            </StackPanel>
-                        </Button.Content>
-                    </Button>
+                        <Button x:Name="BtnSelectBatchFile" Grid.Column="0" HorizontalAlignment="Stretch" Click="BtnSelectBatchFile_Click">
+                            <Button.Content>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8B5;" FontSize="18"/>
+
+                                    <TextBlock x:Name="LblSelectBatchFile"/>
+                                </StackPanel>
+                            </Button.Content>
+                        </Button>
+
+                        <Button x:Name="BtnImportInfo" Grid.Column="1" VerticalAlignment="Stretch">
+                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE946;" FontSize="16"/>
+
+                            <Button.Flyout>
+                                <Flyout>
+                                    <TextBlock x:Name="LblImportInfo" MaxWidth="360" TextWrapping="Wrap"/>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
 
                     <ToggleSwitch x:Name="TglUseAuthentication"/>
 
