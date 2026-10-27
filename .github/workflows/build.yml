@@ -64,7 +64,13 @@ jobs:
           $exe = Join-Path $env:LOCALAPPDATA "Programs\UniFetcher\Release\UniFetcher.exe"
           $data = Join-Path $env:LOCALAPPDATA "UniFetcher"
           if (-not (Test-Path $exe)) { Get-Content "$env:RUNNER_TEMP\install.log" -Tail 40; echo "::error title=Installer::UniFetcher.exe was not installed to $exe"; exit 1 }
+          function Annotate($title, $lines) {
+            if ($lines) { $text = ($lines | Select-Object -Last 40) -join "%0A"; echo "::warning title=$title::$text" }
+          }
           function Show-Logs {
+            Annotate "crash.log" (Get-Content (Join-Path $data "crash.log") -ErrorAction SilentlyContinue)
+            Annotate "app.log (errors)" (Get-Content (Join-Path $data "app.log") -ErrorAction SilentlyContinue | Select-String -Pattern "fail|crit|error|exception|   at " | ForEach-Object { $_.Line })
+            Annotate "Windows events" (Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-10)} -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -in 'Application Error','.NET Runtime' } | Select-Object -First 3 | ForEach-Object { $_.Message -split "`r?`n" })
             foreach ($f in "app.log", "crash.log") {
               $p = Join-Path $data $f
               if (Test-Path $p) { echo "----- $f -----"; Get-Content $p -Tail 60 }
@@ -74,7 +80,7 @@ jobs:
               Select-Object -First 5 | ForEach-Object { echo "----- Windows event: $($_.ProviderName) -----"; $_.Message }
           }
           $failed = $false
-          foreach ($round in 1, 2) {
+          foreach ($round in 1, 2, 3) {
             $p = Start-Process $exe -PassThru
             Start-Sleep -Seconds 25
             if ($p.HasExited) {
@@ -93,5 +99,5 @@ jobs:
               $failed = $true; break
             }
           }
-          if (-not $failed) { Show-Logs }
+          Show-Logs
           if ($failed) { exit 1 }
