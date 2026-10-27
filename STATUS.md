@@ -38,6 +38,9 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 - Installer no longer needs admin (per-user install, HKCU link handler). Single-instance guard with stuck-copy recovery, crash message + `crash.log`, process always exits after the window closes.
 - Build now runs a start-up test (install, open/close ×3) and prints `crash.log` / `app.log` errors / Windows crash events as run annotations.
 
+## Antivirus (27 Oct)
+- Malwarebytes quarantined a test build. Code audit found nothing malicious (only GitHub + the sites you download from; bundled tools from official releases). Removed behaviour that looks suspicious: reading other processes' command lines, ending processes, unifetcher:// handler; browser-extension registry entries are opt-in (`BrowserExtensionEnabled`, default off). Waiting on the user for the detection name/file to know exactly what was flagged.
+
 ## Next
 - `claude/ANDROID_TO_WINDOWS_CHANGES.md` items 1–10: **done** (failure reasons, Action needed view, colours + key, Copy diagnostic, Resume stopped / Clear failed and stopped, keep-free-space, skip already downloaded, safe move, start-up test, update check). Logic in `FailureReason.cs`, `ActionNeededService`, `Diagnostic.cs`; tests in `UniFetcher.Tests`.
 - Still to do from `claude/UNIFETCHER_WINDOWS_V5_CHANGES.md`: bugs 2 (keyring Back button) and 3 (keyring explanation), then features A–G (stage 10). The spec is now v5 (section 12).
