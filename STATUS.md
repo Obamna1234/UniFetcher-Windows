@@ -39,7 +39,8 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 - Build now runs a start-up test (install, open/close ×3) and prints `crash.log` / `app.log` errors / Windows crash events as run annotations.
 
 ## Next
-- v5 changes (`claude/UNIFETCHER_WINDOWS_V5_CHANGES.md`): bugs 2 (keyring Back button) and 3 (keyring explanation), then features A–G as stage 9; and `claude/ANDROID_TO_WINDOWS_CHANGES.md` items 1–10. Not started yet.
+- `claude/ANDROID_TO_WINDOWS_CHANGES.md` items 1–10: **done** (failure reasons, Action needed view, colours + key, Copy diagnostic, Resume stopped / Clear failed and stopped, keep-free-space, skip already downloaded, safe move, start-up test, update check). Logic in `FailureReason.cs`, `ActionNeededService`, `Diagnostic.cs`; tests in `UniFetcher.Tests`.
+- Still to do from `claude/UNIFETCHER_WINDOWS_V5_CHANGES.md`: bugs 2 (keyring Back button) and 3 (keyring explanation), then features A–G (stage 10). The spec is now v5 (section 12).
 - All 7 stages are built. Next: test on your PC, then make the first release by pushing a version tag (HOW_TO.md → "Release a new version").
 
 ## Waiting on you
