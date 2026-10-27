@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Nickvision.Desktop.WinUI.Helpers;
 using Nickvision.Parabolic.Shared.Helpers;
@@ -37,6 +38,9 @@ public static partial class Program
             builder.ConfigureWinUI<App>();
             builder.Services.AddControls();
             var app = builder.Build();
+            // Open the settings database once, here, before the window and the background tasks start.
+            // Opening it from two places at the same moment made the second start-up crash.
+            app.Services.GetRequiredService<Nickvision.Desktop.Application.IConfigurationService>().Get("UniFetcherStartup", string.Empty);
             started = true;
             app.Run();
         }
