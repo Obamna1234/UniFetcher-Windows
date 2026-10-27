@@ -33,10 +33,15 @@ public static partial class Diagnostic
         builder.AppendLine();
         builder.AppendLine("yt-dlp said:");
         var lines = log.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var important = lines.Where(l => l.StartsWith("ERROR", StringComparison.Ordinal) || l.StartsWith("WARNING", StringComparison.Ordinal) || l.StartsWith("UniFetcher:", StringComparison.Ordinal) || l.StartsWith("[debug] yt-dlp version", StringComparison.Ordinal) || l.StartsWith("Skipped:", StringComparison.Ordinal)).TakeLast(20).ToList();
-        if (important.Count == 0)
+        // The lines that explain a failure, plus the last few lines, because some errors (a Python traceback such as
+        // "SyntaxError: ...", or "yt-dlp: error: ...") don't start with "ERROR"
+        var important = lines.Where(IsImportant).TakeLast(20).ToList();
+        foreach (var last in lines.TakeLast(5))
         {
-            important = lines.TakeLast(10).ToList();
+            if (!important.Contains(last))
+            {
+                important.Add(last);
+            }
         }
         foreach (var line in important)
         {
@@ -44,6 +49,14 @@ public static partial class Diagnostic
         }
         return builder.ToString();
     }
+
+    /// <summary>A log line that helps explain what went wrong.</summary>
+    public static bool IsImportant(string line) =>
+        line.StartsWith("ERROR", StringComparison.Ordinal) || line.StartsWith("WARNING", StringComparison.Ordinal) ||
+        line.StartsWith("UniFetcher:", StringComparison.Ordinal) || line.StartsWith("[debug] yt-dlp version", StringComparison.Ordinal) ||
+        line.StartsWith("Skipped:", StringComparison.Ordinal) || line.StartsWith("Traceback", StringComparison.Ordinal) ||
+        line.Contains("Error:", StringComparison.Ordinal) || line.Contains(": error:", StringComparison.Ordinal) ||
+        line.Contains("Errno", StringComparison.Ordinal);
 
     /// <summary>Removes anything private from a line of text.</summary>
     public static string Clean(string text)

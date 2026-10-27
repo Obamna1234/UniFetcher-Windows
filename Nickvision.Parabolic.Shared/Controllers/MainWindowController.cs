@@ -72,6 +72,11 @@ public class MainWindowController
         // Windows notifications: one per normal download, one per finished Bulk Import (not one per bulk link)
         downloadService.DownloadFinished += (_, e) =>
         {
+            // Remember the newest finished file for File > Show Last Download (not in incognito)
+            if (e.Status == DownloadStatus.Success && !_configurationService.Incognito && !string.IsNullOrEmpty(e.FilePath))
+            {
+                _configurationService.Set("LastDownloadPath", e.FilePath);
+            }
             if (string.IsNullOrEmpty(e.Options.BulkItemId) && e.Status is DownloadStatus.Success or DownloadStatus.Error
                 && !(e.Status == DownloadStatus.Error && FailureReasons.ClassifyLog(e.Log, !string.IsNullOrEmpty(e.Options.CookieProfile)).NeedsAction()))
             {
@@ -576,5 +581,36 @@ public class MainWindowController
                 await _powerService.AllowSuspendAsync();
             }
         }
+    }
+
+    /// <summary>The folder new downloads go to (chosen in the Add Download window; starts as Downloads\UniFetcher).</summary>
+    public string DownloadsFolder => _configurationService.PreviousSaveFolder;
+
+    /// <summary>File > Show Downloads Folder: opens the save folder in File Explorer.</summary>
+    public void ShowDownloadsFolder()
+    {
+        var folder = DownloadsFolder;
+        if (!System.IO.Directory.Exists(folder))
+        {
+            _notificationService.Send(new AppNotification(_translationService._("The downloads folder isn't there right now: {0}", folder), NotificationSeverity.Warning));
+            return;
+        }
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
+    }
+
+    /// <summary>File > Show Last Download: opens File Explorer with the newest finished file selected (like OBS's Show Recordings).</summary>
+    public void ShowLastDownload()
+    {
+        var path = _configurationService.Get("LastDownloadPath", string.Empty);
+        if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path))
+        {
+            _notificationService.Send(new AppNotification(string.IsNullOrEmpty(path) ? _translationService._("No finished download yet.") : _translationService._("The last download was moved or deleted. Opening the downloads folder instead."), NotificationSeverity.Warning));
+            if (!string.IsNullOrEmpty(path))
+            {
+                ShowDownloadsFolder();
+            }
+            return;
+        }
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
     }
 }

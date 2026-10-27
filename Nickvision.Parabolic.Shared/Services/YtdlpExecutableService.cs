@@ -635,21 +635,13 @@ public class YtdlpExecutableService : DependencyExecutableService, IYtdlpExecuta
 
     /// <summary>
     /// UniFetcher quality rule (spec section 5): highest up to 1080p, prefer at least 720p, go lower only if nothing at 720p+ exists,
-    /// and if a video only exists above 1080p take the lowest version above 1080p. "p" means the short side, so portrait videos work too.
-    /// Used together with --format-sort res:1080.
+    /// and if a video only exists above 1080p take the lowest version above 1080p.
+    /// The rule itself comes from --format-sort res:1080: yt-dlp's "res" is the short side of the picture (so portrait videos work too),
+    /// and it ranks the largest size up to 1080 first, then the smallest size above 1080.
+    /// (yt-dlp filters can't compare two fields, e.g. [width>=height], so the rule must not be written as filters.)
     /// </summary>
     /// <param name="audio">"+&lt;audio selector&gt;" to merge audio in, or empty for video only.</param>
-    private static string SmartFormat(string audio)
-    {
-        const string inRange = "[height>=720][height<=1080][width>=height]";
-        const string inRangePortrait = "[width>=720][width<=1080][height>width]";
-        const string above = "[height>1080][width>=height]";
-        const string abovePortrait = "[width>1080][height>width]";
-        return string.Join('/',
-            $"bestvideo*{inRange}{audio}", $"bestvideo*{inRangePortrait}{audio}", $"best{inRange}", $"best{inRangePortrait}",
-            $"bestvideo*{above}{audio}", $"bestvideo*{abovePortrait}{audio}", $"best{above}", $"best{abovePortrait}",
-            $"bestvideo*{audio}", "best");
-    }
+    public static string SmartFormat(string audio) => $"bestvideo*{audio}/best";
 
     private string CookiesFromBrowserArgument
     {

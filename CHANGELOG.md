@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+### Fixed: downloads failing with "Something else went wrong"
+- The Smart quality rule used a format filter yt-dlp doesn't accept, so every Smart-quality download stopped before starting (YouTube included). The rule now uses yt-dlp's own resolution sorting (best up to 1080p, portrait videos too).
+- Copy diagnostic now includes the real error line (tracebacks and "error:" lines) and always the last lines of the log.
+- New: File → Show Downloads Folder, and File → Show Last Download (Ctrl+L).
+- "Use Authentication" now has a tooltip explaining it's optional and separate from cookies.
+
 ### Fewer antivirus false alarms
 - No longer reads other programs' details to find its Firefox windows; it only closes windows it opened itself.
 - No longer ends a stuck copy of itself; it explains how to do that in Task Manager.

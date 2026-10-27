@@ -110,6 +110,8 @@ public sealed partial class MainWindow : Window
         MenuAddDownload.Text = _translationService._("Add Download");
         MenuBulkImport.Text = _translationService._("Bulk Import…");
         MenuExit.Text = _translationService._("Exit");
+        MenuShowDownloads.Text = _translationService._("Show Downloads Folder");
+        MenuShowLast.Text = _translationService._("Show Last Download");
         MenuEdit.Title = _translationService._("Edit");
         MenuKeyring.Text = _translationService._("Keyring");
         MenuSettings.Text = _translationService._("Settings");
@@ -515,6 +517,10 @@ public sealed partial class MainWindow : Window
     }
 
     private async void AddDownload(object? sender, RoutedEventArgs e) => await AddDownloadAsync(null);
+
+    private void ShowDownloadsFolder(object sender, RoutedEventArgs args) => _controller.ShowDownloadsFolder();
+
+    private void ShowLastDownload(object sender, RoutedEventArgs args) => _controller.ShowLastDownload();
 
     private void Exit(object sender, RoutedEventArgs args) => Window_Closing(AppWindow, null);
 

@@ -5,17 +5,18 @@ A plain-language guide. Sections marked *(coming soon)* describe features still 
 ## Contents
 1. [Install UniFetcher](#install-unifetcher)
 2. [The "Windows protected your PC" warning](#the-windows-protected-your-pc-warning)
-3. [Update UniFetcher](#update-unifetcher)
+3. [Where your downloads are saved](#where-your-downloads-are-saved)
+4. [Update UniFetcher](#update-unifetcher)
    - [yt-dlp and ffmpeg updates](#yt-dlp-and-ffmpeg-updates)
-4. [The UniFetcher Firefox profile](#the-unifetcher-firefox-profile)
-5. [Install the browser extension](#install-the-browser-extension)
-6. [Bulk Import (150+ links)](#bulk-import-150-links)
-7. [Using a VPN (PIA)](#using-a-vpn-pia)
-8. [Downloading to an external hard drive](#downloading-to-an-external-hard-drive)
+5. [The UniFetcher Firefox profile](#the-unifetcher-firefox-profile)
+6. [Install the browser extension](#install-the-browser-extension)
+7. [Bulk Import (150+ links)](#bulk-import-150-links)
+8. [Using a VPN (PIA)](#using-a-vpn-pia)
+9. [Downloading to an external hard drive](#downloading-to-an-external-hard-drive)
    - [Your downloads, privacy and notifications](#your-downloads-privacy-and-notifications)
-9. [Copy an error log and report a bug](#copy-an-error-log-and-report-a-bug)
-10. [Release a new version](#release-a-new-version)
-11. [Test a build before releasing it](#test-a-build-before-releasing-it)
+10. [Copy an error log and report a bug](#copy-an-error-log-and-report-a-bug)
+11. [Release a new version](#release-a-new-version)
+12. [Test a build before releasing it](#test-a-build-before-releasing-it)
 
 ---
 
@@ -57,7 +58,19 @@ UniFetcher isn't code-signed (that needs a paid certificate), and every test bui
 3. Then in Malwarebytes: **Detections → select it → Restore**, and add the UniFetcher folder (`%LOCALAPPDATA%\Programs\UniFetcher`) under **Settings → Allow List**.
 4. You can also report the false positive to Malwarebytes (forums.malwarebytes.com → False Positives).
 
+**"Setup: Unable to execute file in the temporary directory … Error 5: Access is denied"** while installing means your antivirus was still scanning (or blocked) the installer. Wait for the scan to finish, then run the installer again. If it keeps happening, allow the installer in your antivirus first, or use the portable zip.
+
 What UniFetcher does, so you know what's normal: it downloads yt-dlp/ffmpeg updates from their official GitHub pages and runs them, opens its own Firefox profile when a site needs a session, and saves settings in `%APPDATA%\UniFetcher`. It doesn't register itself with your browsers unless you switch on **Settings → Downloader → Browser extension connection**.
+
+## Where your downloads are saved
+
+- New downloads go to **Downloads\UniFetcher** unless you pick another folder.
+- To change it: paste a link, click **Next**, and on the next page click the folder button next to **Save folder**. UniFetcher remembers that folder for the next downloads.
+- **File → Show Downloads Folder** opens that folder.
+- **File → Show Last Download** (Ctrl+L) opens File Explorer with your newest finished file selected, like OBS's "Show Recordings".
+- **View → History** lists everything you've downloaded, with buttons to open each file or its folder.
+
+**"Use Authentication"** in the Add Download window is optional. It's only for sites where you have an account and yt-dlp can sign in with a username and password. Leave it off for YouTube and most sites. Cookies are separate and happen automatically: if a site refuses a download, UniFetcher tries again with your UniFetcher browser profile, and lists the site under **Action needed** if you have to sign in yourself.
 
 ## Update UniFetcher
 

@@ -72,6 +72,7 @@ public sealed partial class AddDownloadDialog : ContentDialog
         LblImportInfo.Text = _translationService._("Pick a file that has links in it, and UniFetcher finds every web link and opens Bulk Import:\n\n• Lists and exports: plain text (.txt), numbered lists (1. https://…), bookmarks HTML, Firefox bookmark backups (.json), tab-manager exports (JSON, CSV, OneTab)\n• Documents: PDF, Word (.docx, .doc), OpenDocument (.odt), RTF, EPUB, Excel/PowerPoint\n• E-mails (.eml) and saved web pages (.mht)\n• Samsung Notes: export as PDF, Word or Text for best results (.sdocx files work on a best-effort basis)\n\nScanned or photographed pages can't be read. You can also drag a file onto the UniFetcher window.");
         TglUseAuthentication.OnContent = _translationService._("Use Authentication");
         TglUseAuthentication.OffContent = _translationService._("Use Authentication");
+        ToolTipService.SetToolTip(TglUseAuthentication, _translationService._("Optional. Only for sites where you have an account and yt-dlp can sign in with a username and password. Leave it off for YouTube and most sites.\n\nCookies are separate and automatic: if a site refuses the download, UniFetcher uses your UniFetcher browser profile, and lists the site under Action needed if you must sign in yourself."));
         CmbCredential.Header = _translationService._("Credential");
         TxtUsername.Header = _translationService._("Username");
         TxtUsername.PlaceholderText = _translationService._("Enter username here");

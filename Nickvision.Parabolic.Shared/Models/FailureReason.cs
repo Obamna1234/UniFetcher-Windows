@@ -151,7 +151,7 @@ public static class FailureReasons
     public static FailureReason ClassifyLog(string log, bool sessionTried)
     {
         var lines = log.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var important = lines.Where(l => l.Contains("ERROR", StringComparison.Ordinal) || l.StartsWith("UniFetcher:", StringComparison.Ordinal) || l.Contains("Errno", StringComparison.Ordinal) || l.StartsWith("Skipped:", StringComparison.Ordinal)).ToList();
+        var important = lines.Where(l => l.Contains("ERROR", StringComparison.Ordinal) || l.StartsWith("UniFetcher:", StringComparison.Ordinal) || l.Contains("Errno", StringComparison.Ordinal) || l.Contains("Error:", StringComparison.Ordinal) || l.Contains(": error:", StringComparison.Ordinal) || l.StartsWith("Skipped:", StringComparison.Ordinal)).ToList();
         return Classify(important.Count > 0 ? string.Join('\n', important) : string.Join('\n', lines.TakeLast(5)), sessionTried);
     }
 

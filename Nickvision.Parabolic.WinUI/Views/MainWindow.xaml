@@ -57,6 +57,24 @@
 
                             <MenuFlyoutSeparator/>
 
+                            <MenuFlyoutItem x:Name="MenuShowDownloads" Click="ShowDownloadsFolder">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE838;"/>
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+
+                            <MenuFlyoutItem x:Name="MenuShowLast" Click="ShowLastDownload">
+                                <MenuFlyoutItem.KeyboardAccelerators>
+                                    <KeyboardAccelerator Key="L" Modifiers="Control"/>
+                                </MenuFlyoutItem.KeyboardAccelerators>
+
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE8B7;"/>
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+
+                            <MenuFlyoutSeparator/>
+
                             <MenuFlyoutItem x:Name="MenuExit" Click="Exit">
                                 <MenuFlyoutItem.KeyboardAccelerators>
                                     <KeyboardAccelerator Key="F4" Modifiers="Menu"/>
