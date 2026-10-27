@@ -33,7 +33,13 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 - Documents for Bulk Import: `DocumentTextExtractor` (PDF via PdfPig 0.1.9 + raw /URI scan incl. compressed streams; zip-based Office/ODF/EPUB/Samsung Notes; RTF; EML/MHT with quoted-printable and base64; UTF-8/UTF-16 scan of other binaries) → `LinkImportParser`.
 - Test builds are versioned `0.0.0-dev.<run>`; releases take their version from the tag.
 
+## Fixed after the first real-PC test (27 Oct)
+- Second start crashed (settings database opened from two places at once at start-up) → database is opened once in `Program.Main` before anything else. This was v5-changes bug 1 ("won't open again after closing").
+- Installer no longer needs admin (per-user install, HKCU link handler). Single-instance guard with stuck-copy recovery, crash message + `crash.log`, process always exits after the window closes.
+- Build now runs a start-up test (install, open/close ×3) and prints `crash.log` / `app.log` errors / Windows crash events as run annotations.
+
 ## Next
+- v5 changes (`claude/UNIFETCHER_WINDOWS_V5_CHANGES.md`): bugs 2 (keyring Back button) and 3 (keyring explanation), then features A–G as stage 9; and `claude/ANDROID_TO_WINDOWS_CHANGES.md` items 1–10. Not started yet.
 - All 7 stages are built. Next: test on your PC, then make the first release by pushing a version tag (HOW_TO.md → "Release a new version").
 
 ## Waiting on you
