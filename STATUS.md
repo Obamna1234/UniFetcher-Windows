@@ -16,6 +16,7 @@ Base project: **Parabolic** by Nickvision (MIT, C# / WinUI 3, .NET 10). Internal
 | 7 | Organising downloads, incognito, discreet notifications, clear history | Done (build passing) |
 
 ## Decisions so far
+- GitHub Actions in `.github/workflows` are pinned to exact commit SHAs (tag in a comment), so a moved or hijacked tag can't change what the build or release runs. To update one, look up the new tag's commit and replace the SHA. (October 2026 security review from the Sevbify project; nothing else needed changing: tool updates are checksum-verified, the extension is off by default, and the native host only accepts http(s) links from UniFetcher's own extension over a current-user-only pipe.)
 - Bundled programs come only from official GitHub releases: yt-dlp (yt-dlp/yt-dlp), ffmpeg (yt-dlp/FFmpeg-Builds), deno (denoland/deno, needed by yt-dlp for YouTube).
 - Deno is updated only with UniFetcher releases (the app no longer contacts denoland), to keep to the spec's network list.
 - aria2c is not bundled (no official Windows build source); its setting is hidden.

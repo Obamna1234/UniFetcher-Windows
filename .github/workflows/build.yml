@@ -20,15 +20,15 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       VERSION: 0.0.${{ github.run_number }}-dev
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
           submodules: recursive
-      - uses: msys2/setup-msys2@v2
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e  # v2
         id: msys2
         with:
           msystem: mingw64
           install: mingw-w64-x86_64-gettext-tools
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1  # v5
         with:
           dotnet-version: '10.0.x'
       - name: "Set up tools"
@@ -59,7 +59,7 @@ jobs:
       - name: "Package installer, portable zip and extensions"
         shell: pwsh
         run: scripts/package.ps1 -Arch x64 -Version ${{ env.VERSION }} -ExtensionVersion 0.0.${{ github.run_number }} -PublishDir "${{ env.PROJECT_NAME }}/bin/x64/Release/net10.0-windows10.0.19041.0/win-x64/publish" -OutDir out
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: UniFetcher-${{ env.VERSION }}-x64
           path: out/*
