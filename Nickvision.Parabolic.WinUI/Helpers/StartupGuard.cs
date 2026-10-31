@@ -102,8 +102,10 @@ public static partial class StartupGuard
     {
         try
         {
-            var urls = args.Where(a => a.StartsWith("http", StringComparison.OrdinalIgnoreCase) || a.StartsWith("unifetcher://", StringComparison.OrdinalIgnoreCase))
-                .Select(a => a.StartsWith("unifetcher://", StringComparison.OrdinalIgnoreCase) ? "https://" + a["unifetcher://".Length..] : a)
+            // Only accept http(s) URLs passed on the command line. The "unifetcher://" custom-scheme
+            // rewrite was removed: the installer does not register that protocol handler, so the branch
+            // was unreachable dead code and a latent URI-handler surface if a handler were ever re-added.
+            var urls = args.Where(a => a.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 .ToArray();
             var message = "{\"type\":\"activate\",\"urls\":[" + string.Join(",", urls.Select(u => JsonSerializer.Serialize(u, StartupJsonContext.Default.String))) + "]}\n";
             using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut, PipeOptions.CurrentUserOnly);
