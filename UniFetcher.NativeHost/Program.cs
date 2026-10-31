@@ -101,7 +101,10 @@ public static class Program
         {
             return false;
         }
-        Process.Start(new ProcessStartInfo(app) { UseShellExecute = true, WorkingDirectory = AppContext.BaseDirectory });
+        // UseShellExecute=false launches the verified absolute path directly, without routing
+        // through the OS shell / ShellExecute resolution. The path is fixed and File.Exists-checked
+        // above; no browser-supplied data reaches it.
+        Process.Start(new ProcessStartInfo(app) { UseShellExecute = false, WorkingDirectory = AppContext.BaseDirectory });
         var deadline = DateTime.UtcNow.AddSeconds(45);
         while (DateTime.UtcNow < deadline)
         {

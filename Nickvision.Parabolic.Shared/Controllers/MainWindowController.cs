@@ -152,11 +152,11 @@ public class MainWindowController
             for (var i = 0; i < _argumentsService.Data.Count; i++)
             {
                 var urlText = _argumentsService.Data[i].Trim();
-                if (urlText.StartsWith("unifetcher://", StringComparison.Ordinal))
-                {
-                    urlText = urlText.Replace("unifetcher://", "https://");
-                }
-                if (Uri.TryCreate(urlText, UriKind.Absolute, out var url))
+                // The "unifetcher://" custom-scheme rewrite was removed (the scheme is not registered by
+                // the installer, so it was dead code). Only accept http/https URLs from the command line,
+                // matching the scheme enforcement used on the native-messaging inbox path.
+                if (Uri.TryCreate(urlText, UriKind.Absolute, out var url)
+                    && (url.Scheme == Uri.UriSchemeHttp || url.Scheme == Uri.UriSchemeHttps))
                 {
                     return url;
                 }
